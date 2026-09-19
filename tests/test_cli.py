@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+
 from jevcheck.cli import main
 from tests.helpers import FIXTURES
 
@@ -81,3 +84,22 @@ def test_cli_jsonl_and_module_entry() -> None:
         ]
     )
     assert code == 0
+
+    module = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "jevcheck",
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-unchanged.json"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert module.returncode == 0
+    assert "compatible" in module.stdout
