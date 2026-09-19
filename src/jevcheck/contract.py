@@ -9,7 +9,22 @@ from typing import Any, Mapping
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from jevcheck.answers import JevResponse, adapt_response
-from jevcheck.questions import JSONContent, Question, parse_question
+from jevcheck.pinning import require_pinned
+from jevcheck.questions import (
+    ChoiceQuestion,
+    JSONContent,
+    NoulQuestion,
+    Question,
+    ScoreQuestion,
+    parse_question,
+)
+
+# Keys that only apply to one question kind. Shared confidence keys may
+# appear on any field. This is an applicability check — the JSON schema
+# of FieldExpect is unchanged.
+_CHOICE_ONLY = frozenset({"choice"})
+_NOUL_ONLY = frozenset({"noul", "noul_true", "min_noul", "noul_tolerance"})
+_SCORE_ONLY = frozenset({"score", "score_tolerance"})
 
 
 class ContractDefaults(BaseModel):
@@ -66,6 +81,8 @@ class Case(BaseModel):
         unknown = sorted(set(self.expect) - set(self.questions))
         if unknown:
             raise ValueError(f"case {self.id!r} expects unknown questions: {unknown}")
+        for name, expect in self.expect.items():
+            _require_applicable_expect(self.id, name, self.questions[name], expect)
         return self
 
 
@@ -89,23 +106,33 @@ class Contract(BaseModel):
         dupes = sorted({case_id for case_id in ids if ids.count(case_id) > 1})
         if dupes:
             raise ValueError(f"duplicate case ids: {dupes}")
+        require_pinned(self.baseline_model, allow_unpinned=self.allow_unpinned)
         return self
 
     def case_by_id(self) -> dict[str, Case]:
         return {case.id: case for case in self.cases}
 
 
-def load_contract(path: str | Path, *, baseline_model: str | None = None) -> Contract:
+def load_contract(
+    path: str | Path,
+    *,
+    baseline_model: str | None = None,
+    allow_unpinned: bool | None = None,
+) -> Contract:
     source = Path(path)
     text = source.read_text(encoding="utf-8")
     if source.suffix == ".jsonl":
-        return _load_jsonl(text, source, baseline_model=baseline_model)
+        return _load_jsonl(
+            text, source, baseline_model=baseline_model, allow_unpinned=allow_unpinned
+        )
     payload = json.loads(text)
     if not isinstance(payload, Mapping):
         raise ValueError(f"{source} must contain a JSON object")
     data = dict(payload)
     if baseline_model:
         data["baseline_model"] = baseline_model
+    if allow_unpinned:
+        data["allow_unpinned"] = True
     return Contract.model_validate(data)
 
 
@@ -156,7 +183,56 @@ def resolve_expect(expect: FieldExpect, defaults: ContractDefaults) -> FieldExpe
     )
 
 
-def _load_jsonl(text: str, source: Path, *, baseline_model: str | None) -> Contract:
+def _require_applicable_expect(
+    case_id: str, field: str, question: Question, expect: FieldExpect
+) -> None:
+    """Reject empty and wrong-kind expects without changing the fixture schema."""
+    present = expect.model_dump(exclude_none=True)
+    if not present:
+        raise ValueError(
+            f"case {case_id!r} field {field!r}: expect must state at least one constraint"
+        )
+    if isinstance(question, ChoiceQuestion):
+        kind = "choice"
+        foreign = _NOUL_ONLY | _SCORE_ONLY
+        effective = expect.choice is not None
+    elif isinstance(question, NoulQuestion):
+        kind = "noul"
+        foreign = _CHOICE_ONLY | _SCORE_ONLY
+        effective = (
+            expect.noul is not None
+            or expect.noul_true is not None
+            or expect.min_noul is not None
+        )
+    elif isinstance(question, ScoreQuestion):
+        kind = "score"
+        foreign = _CHOICE_ONLY | _NOUL_ONLY
+        effective = expect.score is not None
+    else:
+        raise ValueError(f"case {case_id!r} field {field!r}: unsupported question type")
+
+    wrong = sorted(set(present) & foreign)
+    if wrong:
+        raise ValueError(
+            f"case {case_id!r} field {field!r}: {wrong} do not apply to a {kind} question"
+        )
+    if (
+        not effective
+        and expect.min_confidence is None
+        and expect.baseline_confidence is None
+    ):
+        raise ValueError(
+            f"case {case_id!r} field {field!r}: expect has no effective {kind} constraint"
+        )
+
+
+def _load_jsonl(
+    text: str,
+    source: Path,
+    *,
+    baseline_model: str | None,
+    allow_unpinned: bool | None = None,
+) -> Contract:
     meta: dict[str, Any] = {}
     cases: list[Any] = []
     for lineno, raw_line in enumerate(text.splitlines(), start=1):
@@ -177,6 +253,8 @@ def _load_jsonl(text: str, source: Path, *, baseline_model: str | None) -> Contr
         cases.append(item)
     if baseline_model:
         meta["baseline_model"] = baseline_model
+    if allow_unpinned:
+        meta["allow_unpinned"] = True
     if "baseline_model" not in meta:
         raise ValueError(
             f"{source}: JSONL contract needs a _meta.baseline_model or --baseline-model"

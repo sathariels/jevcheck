@@ -16,7 +16,7 @@ from jevcheck.answers import (
     mapped_confidence,
 )
 from jevcheck.contract import Case, Contract, ContractDefaults, FieldExpect, resolve_expect
-from jevcheck.pinning import require_pinned
+from jevcheck.pinning import require_pinned, require_response_identity
 from jevcheck.questions import ChoiceQuestion, NoulQuestion, ScoreQuestion
 
 
@@ -96,6 +96,13 @@ class EvalReport(BaseModel):
 
 Fetch = Callable[[Case], JevResponse]
 
+# Inclusive float boundaries for confidence drop and noul absolute drift.
+# Decimal tenths are not binary-exact: ``0.8 - 0.7`` is
+# ``0.10000000000000009``, which is *not* ``> 0.1`` in the intended
+# decimal sense. A delta is out of tolerance only when it exceeds
+# ``tolerance`` by more than this epsilon.
+FLOAT_TOLERANCE_EPS = 1e-9
+
 
 def evaluate(
     contract: Contract,
@@ -105,6 +112,7 @@ def evaluate(
     allow_unpinned: bool | None = None,
 ) -> EvalReport:
     opt_in = contract.allow_unpinned if allow_unpinned is None else allow_unpinned
+    require_pinned(contract.baseline_model, allow_unpinned=opt_in)
     if candidate_model is not None:
         require_pinned(candidate_model, allow_unpinned=opt_in)
 
@@ -112,6 +120,8 @@ def evaluate(
     diffs: list[FieldDiff] = []
     for case in contract.cases:
         response = fetch(case)
+        if candidate_model is not None:
+            require_response_identity(response.model, candidate_model)
         result = evaluate_case(case, response, defaults=contract.defaults)
         results.append(result)
         diffs.extend(result.diffs)
@@ -247,7 +257,7 @@ def _eval_noul(
 
     if expect.noul is not None and expect.noul_tolerance is not None:
         delta = abs(actual.noul - expect.noul)
-        if delta > expect.noul_tolerance:
+        if exceeds_tolerance(delta, expect.noul_tolerance):
             return FieldDiff(
                 case_id=case_id,
                 field=field,
@@ -280,6 +290,10 @@ def _eval_score(
     if not isinstance(actual, ScoreAnswer):
         return _type_flip(case_id, field, "score", actual.type)
     if expect.score is not None:
+        # score_tolerance suppresses a *level flip* when the absolute
+        # distance is within tolerance. It is not a maximum float
+        # distance: expected 1.8 vs actual 2.2 with tolerance 0.1 stays
+        # unchanged because both nearest_level() values are 2.
         within = (
             expect.score_tolerance is not None
             and abs(actual.score - expect.score) <= expect.score_tolerance
@@ -309,7 +323,9 @@ def _confidence_diff(
     dropped = (
         expect.baseline_confidence is not None
         and expect.confidence_tolerance is not None
-        and (expect.baseline_confidence - actual_scalar) > expect.confidence_tolerance
+        and exceeds_tolerance(
+            expect.baseline_confidence - actual_scalar, expect.confidence_tolerance
+        )
     )
     if below_min or dropped:
         if expect.baseline_confidence is not None:
@@ -335,7 +351,22 @@ def _confidence_diff(
     )
 
 
+def exceeds_tolerance(delta: float, tolerance: float) -> bool:
+    """Return True when *delta* is greater than an inclusive *tolerance*.
+
+    Exact decimal boundaries (for example drop 0.1 against tolerance 0.1)
+    pass even when binary subtraction overshoots by a few ULPs.
+    """
+    return delta > tolerance + FLOAT_TOLERANCE_EPS
+
+
 def nearest_level(score: float) -> int:
+    """Nearest integer score level via Python ``round`` (ties toward even).
+
+    ``round(1.5) == 2`` and ``round(2.5) == 2``. This is IEEE half-to-even,
+    not schoolbook half-away-from-zero. Callers that need a different
+    tie rule must change this helper; do not assume half-up.
+    """
     return int(round(score))
 
 
