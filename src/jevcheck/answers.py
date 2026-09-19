@@ -60,8 +60,8 @@ class ScoreAnswer(BaseModel):
     type: Literal["score"] = "score"
     score: float
     confidence: float = Field(ge=0.0, le=1.0)
-    legend: dict[str, JSONContent] = Field(default_factory=dict)
-    probabilities: dict[str, float] = Field(default_factory=dict)
+    legend: dict[str, JSONContent]
+    probabilities: dict[str, float]
 
     @field_validator("score", "confidence")
     @classmethod
@@ -76,11 +76,16 @@ class ScoreAnswer(BaseModel):
             return {str(key): item for key, item in value.items()}
         return value
 
+    @field_validator("legend")
+    @classmethod
+    def _valid_legend(cls, value: dict[str, JSONContent]) -> dict[str, JSONContent]:
+        if not value:
+            raise ValueError("score legend must be a nonempty mapping")
+        return value
+
     @field_validator("probabilities")
     @classmethod
     def _valid_probabilities(cls, value: dict[str, float]) -> dict[str, float]:
-        if not value:
-            return value
         return validate_probability_map(value, what="score")
 
 
@@ -115,7 +120,8 @@ def mapped_confidence(answer: NoulAnswer | ChoiceAnswer | ScoreAnswer) -> float:
 def adapt_answer(raw: Any) -> NoulAnswer | ChoiceAnswer | ScoreAnswer:
     """Accept SDK models, namespaces, or verified dicts.
 
-    Missing choice probabilities are rejected (not replaced with ``{}``).
+    Missing choice or score probabilities are rejected (not replaced with ``{}``).
+    Score ``legend`` is required and nonempty, matching SDK-shaped responses.
     Score ``legend`` / ``probabilities`` integer keys from typesafe-sdk 0.7.0
     are stringified so they match this schema.
     """
@@ -140,9 +146,9 @@ def adapt_answer(raw: Any) -> NoulAnswer | ChoiceAnswer | ScoreAnswer:
             "score": data["score"],
             "confidence": data["confidence"],
         }
-        if "legend" in data and data["legend"] is not None:
+        if "legend" in data:
             payload["legend"] = data["legend"]
-        if "probabilities" in data and data["probabilities"] is not None:
+        if "probabilities" in data:
             payload["probabilities"] = data["probabilities"]
         return ScoreAnswer.model_validate(payload)
     raise ValueError(f"unsupported answer object: {raw!r}")

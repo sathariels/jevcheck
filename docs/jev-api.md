@@ -86,8 +86,8 @@ Empty `questions` and an empty score `criteria` list are SDK errors.
 - `type`: `"score"`
 - `score: float` — probability-weighted expected score (may fall between integer levels)
 - `confidence: float` in `[0, 1]`
-- `legend` — SDK 0.7.0 public type uses **integer** keys; JSON wire keys are strings
-- `probabilities` — same integer-key SDK map; values should sum to ~1
+- `legend` — required nonempty map; SDK 0.7.0 public type uses **integer** keys; JSON wire keys are strings
+- `probabilities` — required nonempty finite normalized map (`sum` `1 ± 1e-6`); same integer-key SDK map
 
 jevcheck stringifies score map keys when adapting a real SDK response. It does not invent TypeSafe fields.
 
@@ -113,6 +113,7 @@ jevcheck alias policy (also in `jevcheck.pinning`):
 2. A name is **unpinned** when it is `jev-latest` or `jev-preview` (case-insensitive) or contains `latest` or `preview`.
 3. Empty / whitespace names are invalid (not pins).
 4. Production calls fail closed unless `allow_unpinned=True` / `--allow-unpinned`.
-5. When a candidate is requested, the response `model` must equal that candidate exactly. Null is rejected; it is never stringified to `"None"`.
+5. Concrete pins: the response `model` must equal the requested candidate exactly. Null is rejected; it is never stringified to `"None"`.
+6. Opted-in floating aliases (`jev-latest`, `jev-preview`, or names containing those tokens) under `--allow-unpinned`: accept a nonempty concrete (non-alias) response `model` — official TypeSafe APIs return the resolved versioned ID. The eval report / CLI output report that resolved model. Without the opt-in, floating aliases stay rejected.
 
 Repo fixtures that say `jev-1.13` or `jev-1.14` are **unverified example labels**. Do not treat them as confirmed live catalog IDs.

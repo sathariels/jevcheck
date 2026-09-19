@@ -15,7 +15,14 @@ from jevcheck.answers import (
     ScoreAnswer,
     mapped_confidence,
 )
-from jevcheck.contract import Case, Contract, ContractDefaults, FieldExpect, resolve_expect
+from jevcheck.contract import (
+    Case,
+    Contract,
+    ContractDefaults,
+    FieldExpect,
+    require_actionable_resolved_expect,
+    resolve_expect,
+)
 from jevcheck.pinning import require_pinned, require_response_identity
 from jevcheck.questions import ChoiceQuestion, NoulQuestion, ScoreQuestion
 
@@ -96,11 +103,12 @@ class EvalReport(BaseModel):
 
 Fetch = Callable[[Case], JevResponse]
 
-# Inclusive float boundaries for confidence drop and noul absolute drift.
-# Decimal tenths are not binary-exact: ``0.8 - 0.7`` is
-# ``0.10000000000000009``, which is *not* ``> 0.1`` in the intended
-# decimal sense. A delta is out of tolerance only when it exceeds
-# ``tolerance`` by more than this epsilon.
+# Inclusive float boundaries for confidence drop, noul absolute drift,
+# and score-tolerance abs-diff. Decimal tenths are not binary-exact:
+# ``0.8 - 0.7`` is ``0.10000000000000009``, and ``1.6 - 1.4`` is
+# ``0.20000000000000018``. A delta is out of tolerance only when it
+# exceeds ``tolerance`` by more than this epsilon. Score product rule
+# (same-rounded-level / level-flip suppression) is unchanged.
 FLOAT_TOLERANCE_EPS = 1e-9
 
 
@@ -118,10 +126,15 @@ def evaluate(
 
     results: list[CaseResult] = []
     diffs: list[FieldDiff] = []
+    resolved_models: list[str] = []
     for case in contract.cases:
         response = fetch(case)
         if candidate_model is not None:
-            require_response_identity(response.model, candidate_model)
+            resolved_models.append(
+                require_response_identity(
+                    response.model, candidate_model, allow_unpinned=opt_in
+                )
+            )
         result = evaluate_case(case, response, defaults=contract.defaults)
         results.append(result)
         diffs.extend(result.diffs)
@@ -137,7 +150,7 @@ def evaluate(
     return EvalReport(
         name=contract.name,
         baseline_model=contract.baseline_model,
-        candidate_model=candidate_model,
+        candidate_model=_reported_candidate(candidate_model, resolved_models),
         cases_checked=len(results),
         unchanged=counts[Outcome.UNCHANGED],
         confidence_regressions=counts[Outcome.CONFIDENCE_REGRESSION],
@@ -154,17 +167,20 @@ def evaluate_case(
     defaults: ContractDefaults | None = None,
 ) -> CaseResult:
     defaults = defaults or ContractDefaults()
-    diffs = [
-        evaluate_field(
-            case_id=case.id,
-            field=name,
-            question=case.questions[name],
-            expect=resolve_expect(expect, defaults),
-            defaults=defaults,
-            actual=response.answers.get(name),
+    diffs = []
+    for name, expect in case.expect.items():
+        resolved = resolve_expect(expect, defaults)
+        require_actionable_resolved_expect(resolved, case_id=case.id, field=name)
+        diffs.append(
+            evaluate_field(
+                case_id=case.id,
+                field=name,
+                question=case.questions[name],
+                expect=resolved,
+                defaults=defaults,
+                actual=response.answers.get(name),
+            )
         )
-        for name, expect in case.expect.items()
-    ]
     outcome = Outcome.UNCHANGED
     for diff in diffs:
         if diff.outcome.worse_than(outcome):
@@ -296,7 +312,9 @@ def _eval_score(
         # unchanged because both nearest_level() values are 2.
         within = (
             expect.score_tolerance is not None
-            and abs(actual.score - expect.score) <= expect.score_tolerance
+            and not exceeds_tolerance(
+                abs(actual.score - expect.score), expect.score_tolerance
+            )
         )
         if not within and nearest_level(actual.score) != nearest_level(expect.score):
             return FieldDiff(
@@ -395,6 +413,20 @@ def _expected_label(question: Any, expect: FieldExpect, defaults: ContractDefaul
 
 def _fmt(value: float) -> str:
     return f"{value:.2f}"
+
+
+def _reported_candidate(requested: str | None, resolved_models: list[str]) -> str | None:
+    """Prefer the concrete response model when an opted-in alias resolved."""
+    if requested is None:
+        return None
+    unique = list(dict.fromkeys(resolved_models))
+    if not unique:
+        return requested
+    if unique == [requested]:
+        return requested
+    if len(unique) == 1:
+        return unique[0]
+    return ", ".join(unique)
 
 
 def _label(outcome: Outcome) -> str:

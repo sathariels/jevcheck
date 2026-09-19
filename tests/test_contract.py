@@ -190,6 +190,66 @@ def test_floating_baseline_allowed_when_opted_in() -> None:
     assert loaded.baseline_model == "jev-latest"
 
 
+def test_baseline_confidence_only_without_tolerance_or_floor_rejected() -> None:
+    """Recheck P1: expect baseline_confidence alone is not an effective constraint."""
+    with pytest.raises(ValidationError, match="baseline_confidence is not an effective"):
+        Contract.model_validate(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"baseline_confidence": 0.95}},
+                    }
+                ],
+            }
+        )
+
+
+def test_baseline_confidence_ok_when_defaults_supply_tolerance() -> None:
+    loaded = Contract.model_validate(
+        {
+            "baseline_model": "jev-1.13",
+            "defaults": {"confidence_tolerance": 0.1},
+            "cases": [
+                {
+                    "id": "c1",
+                    "state": "s",
+                    "questions": {
+                        "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                    },
+                    "expect": {"q": {"baseline_confidence": 0.95}},
+                }
+            ],
+        }
+    )
+    assert loaded.defaults.confidence_tolerance == 0.1
+
+
+def test_baseline_confidence_ok_when_defaults_supply_floor() -> None:
+    loaded = Contract.model_validate(
+        {
+            "baseline_model": "jev-1.13",
+            "defaults": {"min_confidence": 0.8},
+            "cases": [
+                {
+                    "id": "c1",
+                    "state": "s",
+                    "questions": {
+                        "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                    },
+                    "expect": {"q": {"baseline_confidence": 0.95}},
+                }
+            ],
+        }
+    )
+    assert loaded.defaults.min_confidence == 0.8
+
+
 def test_empty_score_criteria_rejected() -> None:
     with pytest.raises(ValidationError, match="nonempty"):
         Contract.model_validate(

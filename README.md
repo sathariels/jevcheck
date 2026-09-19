@@ -4,7 +4,7 @@
 
 Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and evals a candidate against that fixture. This is fixture-versus-model evaluation, not two-model execution.
 
-The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`.
+The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`. With that opt-in, a response whose `model` is the concrete resolved ID (for example `jev-1.13.0`) is accepted; the eval report prints that resolved model. Concrete pins still require exact identity.
 
 ```
 pin contract  →  ship on the pinned model  →  jevcheck eval  →  compatible or breaking
@@ -24,7 +24,7 @@ Auth is `TYPESAFE_API_KEY` only. Unit tests mock the network.
 ## Pin → eval → upgrade
 
 1. Write a contract (see [`docs/contract.md`](docs/contract.md)) against the model you ship.
-2. Call Jev with that **explicit** model. `jev-latest` and `jev-preview` are rejected unless you opt in. The response `model` must match the requested candidate.
+2. Call Jev with that **explicit** model. `jev-latest` and `jev-preview` are rejected unless you opt in. Concrete pins require `response.model` to match exactly. An opted-in alias may resolve to a nonempty concrete (non-alias) response model, which is reported.
 3. Before upgrading, eval the candidate (example fixture label — not a verified live ID):
 
 ```bash

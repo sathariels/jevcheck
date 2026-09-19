@@ -68,7 +68,7 @@ Every key in `expect` must exist in `questions`. Extra unknown keys are rejected
 
 ## Field expectations
 
-All keys optional except that a field must state at least one *effective* constraint (a kind-specific answer key, `min_noul`, `min_confidence`, or `baseline_confidence`). Tolerance-only objects are rejected.
+All keys optional except that a field must state at least one *effective* constraint (a kind-specific answer key, `min_noul`, `min_confidence`, or `baseline_confidence` **together with** a resolved `confidence_tolerance` or `min_confidence` floor). A baseline-confidence-only expect with no applicable floor or tolerance after defaults is rejected (exit 2). Do not assume a default `confidence_tolerance`. Tolerance-only objects are rejected.
 
 | Key | Applies to | Meaning |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ All keys optional except that a field must state at least one *effective* constr
 | `min_noul` | noul | Floor on the `noul` float (yes-probability) |
 | `noul_tolerance` | noul | Allowed absolute drift from `noul` (inclusive; exact 0.1 drop against 0.1 passes, with a 1e-9 epsilon so binary float subtraction of decimal tenths does not false-fail) |
 | `score` | score | Expected expected-score. Nearest integer level change → **answer flip** |
-| `score_tolerance` | score | **Level-flip suppression**, not an absolute max distance. If `\|actual - expected\| <=` this, a nearest-level change is not a flip. When both values already share a nearest level (Python `round`, ties toward even: `1.5→2`, `2.5→2`), a larger float gap still counts as unchanged. Example: expected 1.8, actual 2.2, tolerance 0.1 → unchanged (both level 2). |
+| `score_tolerance` | score | **Level-flip suppression**, not an absolute max distance. If `\|actual - expected\|` is within this inclusive bound (same 1e-9 epsilon as confidence/noul; so 1.4 vs 1.6 at 0.2 is within), a nearest-level change is not a flip. When both values already share a nearest level (Python `round`, ties toward even: `1.5→2`, `2.5→2`), a larger float gap still counts as unchanged. Example: expected 1.8, actual 2.2, tolerance 0.1 → unchanged (both level 2). |
 | `min_confidence` | all | Floor on the [mapped scalar](jev-api.md#confidence-mapping-used-by-jevcheck) |
 | `baseline_confidence` | all | Previously recorded scalar (e.g. `0.94`) |
 | `confidence_tolerance` | all | Allowed drop from `baseline_confidence` (inclusive, same 1e-9 epsilon as noul drift) |
@@ -91,9 +91,9 @@ Noul has no API `confidence`. The mapped scalar is `noul` itself.
 2. **confidence regression** — same answer, but the mapped scalar is below `min_confidence` / `min_noul`, or dropped more than `confidence_tolerance` from `baseline_confidence`, or noul drifted more than `noul_tolerance` from expected `noul`. Inclusive boundaries: a drop of exactly 0.1 against tolerance 0.1 is not a regression.
 3. **unchanged** — answer matches and scalars stay within the pinned floors/tolerances.
 
-Choice answers must include a nonempty probability map of finite values `>= 0` whose sum is `1 ± 1e-6`. Missing, empty, negative, NaN, or badly normalized maps are rejected (exit 2). The adapter does not invent an empty map. Score `legend` / `probabilities` coming from typesafe-sdk 0.7.0 may use integer keys; jevcheck stringifies those keys. Nonempty score probability maps use the same sum tolerance.
+Choice and score answers must include a nonempty probability map of finite values `>= 0` whose sum is `1 ± 1e-6`. Missing, null, empty, negative, NaN, or badly normalized maps are rejected (exit 2). The adapter does not invent an empty map. Score answers also require a nonempty `legend` (SDK-shaped responses always include it). Score `legend` / `probabilities` coming from typesafe-sdk 0.7.0 may use integer keys; jevcheck stringifies those keys.
 
-When `--candidate-model` is set, every response `model` must equal that candidate exactly. A null or missing model is an error (never the string `"None"`).
+When `--candidate-model` is a **concrete pin**, every response `model` must equal that candidate exactly. A null or missing model is an error (never the string `"None"`). Opted-in floating aliases (`jev-latest`, `jev-preview`, or names containing those tokens) under `--allow-unpinned` accept a nonempty concrete response `model` that is not itself a floating alias; the eval report prints the resolved response model. Without `--allow-unpinned`, floating aliases stay rejected.
 
 Repo examples such as `jev-1.13` / `jev-1.14` are **unverified example pin labels** for fixtures, not a claim that those IDs exist on the live TypeSafe catalog. A documented version pin on the 2026-09-19 model list is `jev-1.13.0`.
 

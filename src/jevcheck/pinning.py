@@ -10,8 +10,15 @@ Alias resolution (explicit; jevcheck never rewrites a name):
 - Version-shaped names (for example ``jev-1.13.0``) are accepted as pins.
   jevcheck does **not** equate a shorthand with a dotted version:
   ``jev-1.13`` is not ``jev-1.13.0``.
-- Response identity is exact string equality with the requested candidate.
-  A missing or null response model is a failure, never the string ``"None"``.
+- Concrete pins: response identity is exact string equality with the
+  requested candidate. A missing or null response model is a failure,
+  never the string ``"None"``.
+- Opted-in floating aliases (``jev-latest``, ``jev-preview``, or names
+  containing those tokens) under ``allow_unpinned=True`` / ``--allow-unpinned``:
+  accept a nonempty concrete response ``model`` that is **not** itself a
+  floating alias (the official API returns the resolved versioned ID).
+  The eval report / CLI summary report that resolved response model.
+  Without the opt-in, floating aliases stay rejected.
 
 Repo fixtures use example labels such as ``jev-1.13`` / ``jev-1.14``. Those
 are unverified against the live catalog. A documented TypeSafe version pin
@@ -55,8 +62,14 @@ def require_pinned(model: str, *, allow_unpinned: bool = False) -> str:
     return pinned
 
 
-def require_response_identity(response_model: Any, requested: str) -> str:
-    """Fail closed when the response did not come from *requested*."""
+def require_response_identity(
+    response_model: Any, requested: str, *, allow_unpinned: bool = False
+) -> str:
+    """Fail closed when the response did not come from *requested*.
+
+    Concrete pins stay exact identity. An opted-in floating alias may
+    resolve to a nonempty concrete (non-alias) response model.
+    """
     if response_model is None:
         raise ModelIdentityError(
             f"response model is null; expected requested candidate {requested!r}"
@@ -67,6 +80,13 @@ def require_response_identity(response_model: Any, requested: str) -> str:
             f"expected requested candidate {requested!r}"
         )
     actual = response_model.strip()
+    if allow_unpinned and is_unpinned(requested):
+        if not is_unpinned(actual):
+            return actual
+        raise ModelIdentityError(
+            f"response model {actual!r} is a floating alias; expected a concrete "
+            f"resolved model for requested candidate {requested!r}"
+        )
     if actual != requested:
         raise ModelIdentityError(
             f"response model {actual!r} does not match requested candidate {requested!r}"
