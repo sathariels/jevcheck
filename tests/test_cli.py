@@ -326,6 +326,235 @@ def test_cli_empty_expect_is_usage_error(tmp_path, capsys) -> None:
     assert "constraint" in captured.err
 
 
+def test_cli_baseline_confidence_only_is_usage_error(tmp_path, capsys) -> None:
+    """Recheck P1: baseline_confidence 0.95 with actual 0.51 must not exit 0."""
+    contract = tmp_path / "baseline-only.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"baseline_confidence": 0.95}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    replay = tmp_path / "baseline-only-replay.json"
+    replay.write_text(
+        json.dumps(
+            {
+                "c1": {
+                    "model": "jev-1.14",
+                    "answers": {
+                        "q": {
+                            "type": "choice",
+                            "choice": "b",
+                            "confidence": 0.51,
+                            "probabilities": {"a": 0.49, "b": 0.51},
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = main(
+        [
+            "eval",
+            str(contract),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(replay),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == EXIT_USAGE
+    assert "baseline_confidence" in captured.err
+    assert "compatible" not in captured.out
+
+
+def test_cli_alias_opt_in_accepts_resolved_version(tmp_path, capsys) -> None:
+    """Recheck P2: --candidate-model jev-preview --allow-unpinned + jev-1.13.0."""
+    contract = tmp_path / "alias.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"choice": "b", "min_confidence": 0.0}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    replay = tmp_path / "alias-replay.json"
+    replay.write_text(
+        json.dumps(
+            {
+                "c1": {
+                    "model": "jev-1.13.0",
+                    "answers": {
+                        "q": {
+                            "type": "choice",
+                            "choice": "b",
+                            "confidence": 0.51,
+                            "probabilities": {"a": 0.49, "b": 0.51},
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = main(
+        [
+            "eval",
+            str(contract),
+            "--candidate-model",
+            "jev-preview",
+            "--allow-unpinned",
+            "--answers",
+            str(replay),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "jev-1.13.0" in captured.out
+    assert captured.out.strip().endswith("compatible")
+
+
+def test_cli_score_decimal_boundary_is_compatible(tmp_path, capsys) -> None:
+    """Recheck P2: expected 1.4, actual 1.6, score_tolerance 0.2 must exit 0."""
+    contract = tmp_path / "score-boundary.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "score", "criteria": ["lo", "mid", "hi"]}
+                        },
+                        "expect": {
+                            "q": {
+                                "score": 1.4,
+                                "score_tolerance": 0.2,
+                                "min_confidence": 0.0,
+                            }
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    replay = tmp_path / "score-boundary-replay.json"
+    replay.write_text(
+        json.dumps(
+            {
+                "c1": {
+                    "model": "jev-1.14",
+                    "answers": {
+                        "q": {
+                            "type": "score",
+                            "score": 1.6,
+                            "confidence": 0.6,
+                            "legend": {"1": "mid", "2": "hi"},
+                            "probabilities": {"1": 0.4, "2": 0.6},
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = main(
+        [
+            "eval",
+            str(contract),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(replay),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out.strip().endswith("compatible")
+
+
+def test_cli_score_probabilities_missing_null_empty_are_usage_errors(tmp_path, capsys) -> None:
+    """Recheck P2: omitted / null / empty score probabilities must exit 2."""
+    contract = tmp_path / "score.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "score", "criteria": ["lo", "mid", "hi"]}
+                        },
+                        "expect": {"q": {"score": 2, "min_confidence": 0.0}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    for label, probabilities in (
+        ("missing", "__omit__"),
+        ("null", None),
+        ("empty", {}),
+    ):
+        answers: dict = {
+            "type": "score",
+            "score": 2,
+            "confidence": 0.9,
+            "legend": {"0": "lo", "1": "mid", "2": "hi"},
+        }
+        if probabilities != "__omit__":
+            answers["probabilities"] = probabilities
+        replay = tmp_path / f"score-prob-{label}.json"
+        replay.write_text(
+            json.dumps({"c1": {"model": "jev-1.14", "answers": {"q": answers}}}),
+            encoding="utf-8",
+        )
+        code = main(
+            [
+                "eval",
+                str(contract),
+                "--candidate-model",
+                "jev-1.14",
+                "--answers",
+                str(replay),
+            ]
+        )
+        captured = capsys.readouterr()
+        assert code == EXIT_USAGE, label
+        assert "compatible" not in captured.out
+
+
 def test_cli_bad_choice_probabilities_is_usage_error(tmp_path, capsys) -> None:
     contract = tmp_path / "c.json"
     contract.write_text(

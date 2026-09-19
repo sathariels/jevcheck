@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from jevcheck.answers import JevResponse
-from jevcheck.contract import Contract
-from jevcheck.eval import Outcome, evaluate, nearest_level
+from jevcheck.answers import JevResponse, ScoreAnswer
+from jevcheck.contract import Case, Contract, ContractDefaults
+from jevcheck.eval import Outcome, evaluate, evaluate_case, nearest_level
 from jevcheck.pinning import ModelIdentityError
 from tests.helpers import choice, noul, response, score
 
@@ -100,6 +100,42 @@ def test_noul_drift_exact_decimal_boundary_passes() -> None:
     assert report.results[0].outcome is Outcome.UNCHANGED
 
 
+def test_score_decimal_boundary_within_tolerance_is_unchanged() -> None:
+    """1.4 vs 1.6 at score_tolerance 0.2 must pass despite binary 0.20000000000000018."""
+    contract = _score_contract(expected=1.4, tolerance=0.2)
+    actual = ScoreAnswer(
+        score=1.6,
+        confidence=0.6,
+        legend={"1": "mid", "2": "hi"},
+        probabilities={"1": 0.4, "2": 0.6},
+    )
+    report = evaluate(
+        contract,
+        lambda case: response("jev-1.14", q=actual),
+        candidate_model="jev-1.14",
+    )
+    assert abs(1.6 - 1.4) > 0.2
+    assert nearest_level(1.4) != nearest_level(1.6)
+    assert report.breaking is False
+    assert report.results[0].outcome is Outcome.UNCHANGED
+
+
+def test_score_decimal_boundary_just_beyond_tolerance_is_flip() -> None:
+    contract = _score_contract(expected=1.4, tolerance=0.2)
+    actual = ScoreAnswer(
+        score=1.600001,
+        confidence=0.6,
+        legend={"1": "mid", "2": "hi"},
+        probabilities={"1": 0.4, "2": 0.6},
+    )
+    report = evaluate(
+        contract,
+        lambda case: response("jev-1.14", q=actual),
+        candidate_model="jev-1.14",
+    )
+    assert report.results[0].outcome is Outcome.ANSWER_FLIP
+
+
 def test_score_same_level_outside_float_tolerance_is_unchanged() -> None:
     """score_tolerance is level-flip suppression, not max |delta|."""
     contract = _score_contract(expected=1.8, tolerance=0.1)
@@ -112,6 +148,23 @@ def test_score_same_level_outside_float_tolerance_is_unchanged() -> None:
     assert abs(2.2 - 1.8) > 0.1
     assert report.breaking is False
     assert report.results[0].outcome is Outcome.UNCHANGED
+
+
+def test_evaluate_case_rejects_baseline_only_after_defaults() -> None:
+    case = Case.model_validate(
+        {
+            "id": "c1",
+            "state": "s",
+            "questions": {"q": {"type": "choice", "criteria": {"a": None, "b": None}}},
+            "expect": {"q": {"baseline_confidence": 0.95}},
+        }
+    )
+    with pytest.raises(ValueError, match="baseline_confidence is not an effective"):
+        evaluate_case(
+            case,
+            response("jev-1.14", q=choice("b", 0.51, other="a")),
+            defaults=ContractDefaults(),
+        )
 
 
 def test_python_round_ties_toward_even() -> None:

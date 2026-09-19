@@ -107,6 +107,13 @@ class Contract(BaseModel):
         if dupes:
             raise ValueError(f"duplicate case ids: {dupes}")
         require_pinned(self.baseline_model, allow_unpinned=self.allow_unpinned)
+        for case in self.cases:
+            for name, expect in case.expect.items():
+                require_actionable_resolved_expect(
+                    resolve_expect(expect, self.defaults),
+                    case_id=case.id,
+                    field=name,
+                )
         return self
 
     def case_by_id(self) -> dict[str, Case]:
@@ -180,6 +187,40 @@ def resolve_expect(expect: FieldExpect, defaults: ContractDefaults) -> FieldExpe
                 else defaults.score_tolerance
             ),
         }
+    )
+
+
+def require_actionable_resolved_expect(
+    expect: FieldExpect, *, case_id: str, field: str
+) -> None:
+    """Reject a baseline-only expect that still cannot evaluate a drop or floor.
+
+    ``baseline_confidence`` is a stated constraint at parse time, but
+    ``_confidence_diff`` only uses it with ``confidence_tolerance``. A
+    resolved ``min_confidence`` is an applicable floor. Kind-specific
+    answer keys remain independently effective. Do not invent a default
+    tolerance.
+    """
+    if expect.baseline_confidence is None:
+        return
+    if expect.confidence_tolerance is not None or expect.min_confidence is not None:
+        return
+    if _has_kind_constraint(expect):
+        return
+    raise ValueError(
+        f"case {case_id!r} field {field!r}: baseline_confidence is not an "
+        "effective constraint without confidence_tolerance or min_confidence "
+        "after defaults are resolved"
+    )
+
+
+def _has_kind_constraint(expect: FieldExpect) -> bool:
+    return (
+        expect.choice is not None
+        or expect.noul is not None
+        or expect.noul_true is not None
+        or expect.min_noul is not None
+        or expect.score is not None
     )
 
 

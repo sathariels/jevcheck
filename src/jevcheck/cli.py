@@ -59,7 +59,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     eval_cmd.add_argument(
         "--allow-unpinned",
         action="store_true",
-        help="opt in to floating names such as jev-latest and jev-preview",
+        help=(
+            "opt in to floating names such as jev-latest and jev-preview; "
+            "accept a concrete resolved response model (not another alias)"
+        ),
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 

@@ -38,6 +38,87 @@ def test_adapt_answer_does_not_invent_empty_choice_probabilities() -> None:
     [
         None,
         {},
+        {"1": -0.1, "2": 1.1},
+        {"1": math.nan, "2": 1.0},
+        {"1": 0.2, "2": 0.2},
+    ],
+)
+def test_score_probability_maps_rejected(probabilities) -> None:
+    """Recheck P2: null or empty (or otherwise invalid) score probabilities fail."""
+    payload = {
+        "type": "score",
+        "score": 2,
+        "confidence": 0.9,
+        "legend": {"1": "this week", "2": "today"},
+        "probabilities": probabilities,
+    }
+    with pytest.raises((ValidationError, ValueError, TypeError)):
+        adapt_answer(payload)
+
+
+def test_score_probabilities_omitted_rejected() -> None:
+    with pytest.raises((ValidationError, ValueError)):
+        adapt_answer(
+            {
+                "type": "score",
+                "score": 2,
+                "confidence": 0.9,
+                "legend": {"2": "today"},
+            }
+        )
+
+
+def test_score_legend_omitted_or_empty_rejected() -> None:
+    with pytest.raises((ValidationError, ValueError)):
+        adapt_answer(
+            {
+                "type": "score",
+                "score": 2,
+                "confidence": 0.9,
+                "probabilities": {"2": 1.0},
+            }
+        )
+    with pytest.raises((ValidationError, ValueError)):
+        adapt_answer(
+            {
+                "type": "score",
+                "score": 2,
+                "confidence": 0.9,
+                "legend": {},
+                "probabilities": {"2": 1.0},
+            }
+        )
+    with pytest.raises((ValidationError, ValueError, TypeError)):
+        adapt_answer(
+            {
+                "type": "score",
+                "score": 2,
+                "confidence": 0.9,
+                "legend": None,
+                "probabilities": {"2": 1.0},
+            }
+        )
+
+
+def test_sdk_shaped_score_maps_still_adapt() -> None:
+    adapted = adapt_answer(
+        {
+            "type": "score",
+            "score": 1.6,
+            "confidence": 0.6,
+            "legend": {1: "mid", 2: "hi"},
+            "probabilities": {1: 0.4, 2: 0.6},
+        }
+    )
+    assert adapted.legend == {"1": "mid", "2": "hi"}
+    assert adapted.probabilities == {"1": 0.4, "2": 0.6}
+
+
+@pytest.mark.parametrize(
+    "probabilities",
+    [
+        None,
+        {},
         {"a": -0.1, "b": 1.1},
         {"a": math.nan, "b": 1.0},
         {"a": 0.2, "b": 0.2},
@@ -73,7 +154,13 @@ def test_probability_sum_tolerance_is_one_e_minus_6() -> None:
 def test_nan_score_rejected_at_schema() -> None:
     with pytest.raises(ValidationError):
         ScoreAnswer.model_validate(
-            {"type": "score", "score": math.nan, "confidence": 0.9, "probabilities": {"0": 1.0}}
+            {
+                "type": "score",
+                "score": math.nan,
+                "confidence": 0.9,
+                "legend": {"0": "can wait"},
+                "probabilities": {"0": 1.0},
+            }
         )
 
 
