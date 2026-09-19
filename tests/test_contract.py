@@ -99,6 +99,97 @@ def test_expect_must_match_questions() -> None:
         )
 
 
+def test_empty_expect_rejected() -> None:
+    with pytest.raises(ValidationError, match="at least one constraint"):
+        Contract.model_validate(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "x",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {}},
+                    }
+                ],
+            }
+        )
+
+
+def test_wrong_kind_expect_rejected() -> None:
+    with pytest.raises(ValidationError, match="do not apply"):
+        Contract.model_validate(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "x",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"score": 2}},
+                    }
+                ],
+            }
+        )
+
+
+def test_empty_baseline_rejected() -> None:
+    with pytest.raises(ValidationError, match="nonempty"):
+        Contract.model_validate(
+            {
+                "baseline_model": "",
+                "cases": [
+                    {
+                        "id": "x",
+                        "state": "s",
+                        "questions": {"n": {"type": "noul"}},
+                        "expect": {"n": {"noul_true": True}},
+                    }
+                ],
+            }
+        )
+
+
+@pytest.mark.parametrize("name", ["jev-latest", "jev-preview"])
+def test_floating_baseline_rejected(name: str) -> None:
+    with pytest.raises(ValidationError, match="unpinned"):
+        Contract.model_validate(
+            {
+                "baseline_model": name,
+                "cases": [
+                    {
+                        "id": "x",
+                        "state": "s",
+                        "questions": {"n": {"type": "noul"}},
+                        "expect": {"n": {"noul_true": True}},
+                    }
+                ],
+            }
+        )
+
+
+def test_floating_baseline_allowed_when_opted_in() -> None:
+    loaded = Contract.model_validate(
+        {
+            "baseline_model": "jev-latest",
+            "allow_unpinned": True,
+            "cases": [
+                {
+                    "id": "x",
+                    "state": "s",
+                    "questions": {"n": {"type": "noul"}},
+                    "expect": {"n": {"noul_true": True}},
+                }
+            ],
+        }
+    )
+    assert loaded.baseline_model == "jev-latest"
+
+
 def test_empty_score_criteria_rejected() -> None:
     with pytest.raises(ValidationError, match="nonempty"):
         Contract.model_validate(

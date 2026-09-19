@@ -13,7 +13,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_live_system_one_noul_choice_score() -> None:
-    client = JevClient(model="jev-1.13")
+    client = JevClient(model="jev-1.13.0")
     response = client.system_one(
         state="I was charged twice. Please fix this ASAP.",
         questions={

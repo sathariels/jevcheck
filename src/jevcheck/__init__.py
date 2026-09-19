@@ -12,7 +12,13 @@ from jevcheck.client import AUTH_ENV, JevClient
 from jevcheck.contract import Case, Contract, FieldExpect, load_contract
 from jevcheck.eval import CaseResult, EvalReport, Outcome, evaluate, evaluate_case
 from jevcheck.gate import Action, Decision, Gate
-from jevcheck.pinning import UnpinnedModelError, is_unpinned, require_pinned
+from jevcheck.pinning import (
+    ModelIdentityError,
+    UnpinnedModelError,
+    is_unpinned,
+    require_pinned,
+    require_response_identity,
+)
 
 __version__ = "0.1.0"
 
@@ -29,6 +35,7 @@ __all__ = [
     "Gate",
     "JevClient",
     "JevResponse",
+    "ModelIdentityError",
     "NoulAnswer",
     "Outcome",
     "ScoreAnswer",
@@ -40,5 +47,6 @@ __all__ = [
     "load_contract",
     "mapped_confidence",
     "require_pinned",
+    "require_response_identity",
     "__version__",
 ]

@@ -1,0 +1,10 @@
+graft tests
+graft fixtures
+graft docs
+include LICENSE
+include README.md
+include pyproject.toml
+recursive-include .github *.yml
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude .env

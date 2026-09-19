@@ -18,7 +18,11 @@ def test_gate_uses_documented_noul_mapping() -> None:
     yes = gate.decide_answer(NoulAnswer(noul=0.96))
     no = gate.decide_answer(NoulAnswer(noul=0.2))
     choice = gate.decide_answer(
-        ChoiceAnswer(choice="billing", confidence=0.7, probabilities={"billing": 0.7})
+        ChoiceAnswer(
+            choice="billing",
+            confidence=0.7,
+            probabilities={"billing": 0.7, "general": 0.3},
+        )
     )
     assert yes.action is Action.AUTO
     assert no.action is Action.REJECT

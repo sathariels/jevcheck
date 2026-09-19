@@ -13,8 +13,11 @@ from tests.helpers import choice, response
     [
         ("jev-1.13", False),
         ("jev-1.14", False),
+        ("jev-1.13.0", False),
         ("jev-latest", True),
         ("JEV-LATEST", True),
+        ("jev-preview", True),
+        ("JEV-PREVIEW", True),
         ("jev-1.14-latest-preview", True),
     ],
 )
@@ -25,8 +28,16 @@ def test_is_unpinned(name: str, floating: bool) -> None:
 def test_require_pinned_fail_closed() -> None:
     with pytest.raises(UnpinnedModelError, match="unpinned"):
         require_pinned("jev-latest")
+    with pytest.raises(UnpinnedModelError, match="unpinned"):
+        require_pinned("jev-preview")
+    with pytest.raises(ValueError, match="nonempty"):
+        require_pinned("")
+    with pytest.raises(ValueError, match="nonempty"):
+        is_unpinned("   ")
     assert require_pinned("jev-latest", allow_unpinned=True) == "jev-latest"
+    assert require_pinned("jev-preview", allow_unpinned=True) == "jev-preview"
     assert require_pinned("jev-1.13") == "jev-1.13"
+    assert require_pinned("jev-1.13.0") == "jev-1.13.0"
 
 
 def test_evaluate_rejects_unpinned_candidate(contract: Contract) -> None:
@@ -39,3 +50,5 @@ def test_evaluate_rejects_unpinned_candidate(contract: Contract) -> None:
     }
     with pytest.raises(UnpinnedModelError):
         evaluate(contract, lambda case: replay[case.id], candidate_model="jev-latest")
+    with pytest.raises(UnpinnedModelError):
+        evaluate(contract, lambda case: replay[case.id], candidate_model="jev-preview")

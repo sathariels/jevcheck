@@ -24,12 +24,16 @@ class JevClient:
         allow_unpinned: bool = False,
         base_url: str | None = None,
         sdk_client: Any | None = None,
+        transport: Any | None = None,
+        retry: Any | None = None,
     ) -> None:
         self.model = require_pinned(model, allow_unpinned=allow_unpinned)
         self.allow_unpinned = allow_unpinned
         self.api_key = api_key if api_key is not None else os.environ.get(AUTH_ENV)
         self.base_url = base_url
         self._sdk_client = sdk_client
+        self._transport = transport
+        self._retry = retry
 
     def __enter__(self) -> JevClient:
         return self
@@ -67,4 +71,8 @@ class JevClient:
         kwargs: dict[str, Any] = {"api_key": self.api_key, "model": model}
         if self.base_url:
             kwargs["base_url"] = self.base_url
+        if self._transport is not None:
+            kwargs["transport"] = self._transport
+        if self._retry is not None:
+            kwargs["retry"] = self._retry
         return TypeSafeClient(**kwargs)

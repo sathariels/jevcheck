@@ -2,7 +2,9 @@
 
 **pytest for Jev.** Pin what production is allowed to do, eval a candidate model, and fail the upgrade when answers flip or confidence drops.
 
-Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and proves a candidate still satisfies it before you switch `jev-1.13` → `jev-1.14`.
+Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and evals a candidate against that fixture. This is fixture-versus-model evaluation, not two-model execution.
+
+The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`.
 
 ```
 pin contract  →  ship on the pinned model  →  jevcheck eval  →  compatible or breaking
@@ -22,10 +24,12 @@ Auth is `TYPESAFE_API_KEY` only. Unit tests mock the network.
 ## Pin → eval → upgrade
 
 1. Write a contract (see [`docs/contract.md`](docs/contract.md)) against the model you ship.
-2. Call Jev with that **explicit** model. `jev-latest` is rejected unless you opt in.
-3. Before upgrading, eval the candidate:
+2. Call Jev with that **explicit** model. `jev-latest` and `jev-preview` are rejected unless you opt in. The response `model` must match the requested candidate.
+3. Before upgrading, eval the candidate (example fixture label — not a verified live ID):
 
 ```bash
+# Live call. Pin a catalog version such as jev-1.13.0 in production.
+# The example below matches this repo's replay fixtures only.
 jevcheck eval fixtures/support-triage.json --candidate-model jev-1.14
 ```
 
@@ -47,7 +51,7 @@ Verified System One fields: [`docs/jev-api.md`](docs/jev-api.md).
 from jevcheck import JevClient, evaluate, load_contract
 
 contract = load_contract("fixtures/support-triage.json")
-client = JevClient(model="jev-1.14")  # candidate; pin a real version
+client = JevClient(model="jev-1.14")  # example fixture label; pin a catalog version in production
 
 report = evaluate(
     contract,

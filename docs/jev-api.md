@@ -23,9 +23,9 @@ jevcheck never reads any other API-key environment variable.
 ```python
 from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
 
-with TypeSafeClient(model="jev-1.13") as client:  # pin an explicit model in production
+with TypeSafeClient(model="jev-1.13.0") as client:  # documented version pin; not jev-latest
     response = client.system_one(
-        state="..." | {"document": "..."} | JSON,
+        state="I was charged twice. Please fix this ASAP.",
         questions={
             "billing": Noul(instructions="Is this ticket about billing?"),
             "tone": Choice(
@@ -36,8 +36,8 @@ with TypeSafeClient(model="jev-1.13") as client:  # pin an explicit model in pro
                 instructions="How urgent is this ticket?",
                 criteria=["can wait", "this week", "today"],
             ),
-        ),
-        model="jev-1.13",  # per-call override
+        },
+        model="jev-1.13.0",  # per-call override
     )
 
 print(response.nouls["billing"].noul)
@@ -86,8 +86,10 @@ Empty `questions` and an empty score `criteria` list are SDK errors.
 - `type`: `"score"`
 - `score: float` — probability-weighted expected score (may fall between integer levels)
 - `confidence: float` in `[0, 1]`
-- `legend`
-- `probabilities`
+- `legend` — SDK 0.7.0 public type uses **integer** keys; JSON wire keys are strings
+- `probabilities` — same integer-key SDK map; values should sum to ~1
+
+jevcheck stringifies score map keys when adapting a real SDK response. It does not invent TypeSafe fields.
 
 ## Confidence mapping used by jevcheck
 
@@ -101,8 +103,16 @@ Owner lock: do not invent a second noul confidence field.
 
 If this mapping is not enough, stop and ask — do not fabricate fields.
 
-## Model pinning
+## Model pinning and alias resolution
 
-The SDK may inherit a model from `TypeSafeClient(model=...)` or `TYPESAFE_DEFAULT_MODEL`. Guides mention `jev-latest` as a floating default.
+The SDK may inherit a model from `TypeSafeClient(model=...)` or `TYPESAFE_DEFAULT_MODEL`. Official TypeSafe model docs (fetched 2026-09-19) list a versioned pin `jev-1.13.0` and identify **`jev-latest` and `jev-preview` as moving aliases**. The response `model` field is the resolved version.
 
-jevcheck treats a model as **unpinned** when the name is exactly `jev-latest` or contains `latest` (case-insensitive). Production calls fail closed unless `allow_unpinned=True` / `--allow-unpinned`.
+jevcheck alias policy (also in `jevcheck.pinning`):
+
+1. Names are never rewritten. `jev-1.13` is not treated as `jev-1.13.0`.
+2. A name is **unpinned** when it is `jev-latest` or `jev-preview` (case-insensitive) or contains `latest` or `preview`.
+3. Empty / whitespace names are invalid (not pins).
+4. Production calls fail closed unless `allow_unpinned=True` / `--allow-unpinned`.
+5. When a candidate is requested, the response `model` must equal that candidate exactly. Null is rejected; it is never stringified to `"None"`.
+
+Repo fixtures that say `jev-1.13` or `jev-1.14` are **unverified example labels**. Do not treat them as confirmed live catalog IDs.
