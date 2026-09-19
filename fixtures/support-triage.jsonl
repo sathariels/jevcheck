@@ -1,0 +1,2 @@
+{"_meta": true, "version": "0.1", "name": "support-triage-jsonl", "baseline_model": "jev-1.13"}
+{"id": "ticket-002", "state": "Where do I change my notification email?", "questions": {"intent": {"type": "choice", "instructions": "What is this ticket about?", "criteria": {"billing": null, "general": null}}}, "expect": {"intent": {"choice": "general", "min_confidence": 0.8}}}

@@ -1,0 +1,53 @@
+{
+  "ticket-001": {
+    "model": "jev-1.14",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "billing",
+        "confidence": 0.93,
+        "probabilities": {"billing": 0.93, "general": 0.07}
+      },
+      "billing": {
+        "type": "noul",
+        "noul": 0.95
+      },
+      "urgency": {
+        "type": "score",
+        "score": 1.9,
+        "confidence": 0.9,
+        "legend": {"0": "can wait", "1": "this week", "2": "today"},
+        "probabilities": {"0": 0.02, "1": 0.08, "2": 0.9}
+      }
+    }
+  },
+  "ticket-002": {
+    "model": "jev-1.14",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "billing",
+        "confidence": 0.81,
+        "probabilities": {"billing": 0.81, "general": 0.19}
+      }
+    }
+  },
+  "ticket-003": {
+    "model": "jev-1.14",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "billing",
+        "confidence": 0.71,
+        "probabilities": {"billing": 0.71, "general": 0.29}
+      },
+      "urgency": {
+        "type": "score",
+        "score": 2.0,
+        "confidence": 0.71,
+        "legend": {"0": "can wait", "1": "this week", "2": "today"},
+        "probabilities": {"0": 0.04, "1": 0.25, "2": 0.71}
+      }
+    }
+  }
+}
