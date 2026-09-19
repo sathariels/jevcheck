@@ -81,6 +81,6 @@ python -m jevcheck eval fixtures/support-triage.json \
 
 ## For agents / audits
 
-See [`docs/release-readiness-audit-v0.1.md`](docs/release-readiness-audit-v0.1.md).
+See [`docs/release-readiness-audit-v0.1.md`](docs/release-readiness-audit-v0.1.md). Recheck: [`docs/release-readiness-audit-v0.1-recheck.md`](docs/release-readiness-audit-v0.1-recheck.md).
 
 MIT.

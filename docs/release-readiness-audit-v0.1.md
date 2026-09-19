@@ -1,5 +1,7 @@
 # Jevcheck v0.1.0 release-readiness audit
 
+A later independent recheck of `8b1852d` is in [`release-readiness-audit-v0.1-recheck.md`](release-readiness-audit-v0.1-recheck.md).
+
 **Verdict: NOT READY. I would not tag this commit v0.1.0.**
 
 Audited GitHub commit `55986d9d8cfc291e5c8c36e8475a0071652d4210` on 2026-09-19. The GitHub clone matched `/Users/sathariels/Downloads/jevcheck-main` before generated installation files. The task's original directory contained no source. The audited clone remained Git-clean. No product code, dependencies, fixture formats, or semantics were changed; all additional probes were written outside the repository.
