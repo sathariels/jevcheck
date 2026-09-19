@@ -75,4 +75,8 @@ python -m jevcheck eval fixtures/support-triage.json \
   --answers fixtures/replay-unchanged.json
 ```
 
+## For agents / audits
+
+See [`docs/release-readiness-audit-v0.1.md`](docs/release-readiness-audit-v0.1.md).
+
 MIT.
