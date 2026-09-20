@@ -121,3 +121,5 @@ For mocked evals and tests, a JSON object keyed by case `id`:
 ```
 
 Answer objects use only verified System One fields.
+
+`jevcheck record` (v0.2) writes this same file. `jevcheck compare --from` reads it as the baseline snapshot. See [`adr-009-two-model-compare.md`](adr-009-two-model-compare.md). `eval` remains fixture-versus-candidate.

@@ -2,12 +2,15 @@
 
 **pytest for Jev.** Pin what production is allowed to do, eval a candidate model, and fail the upgrade when answers flip or confidence drops.
 
-Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and evals a candidate against that fixture. This is fixture-versus-model evaluation, not two-model execution.
+Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and evals a candidate against that fixture.
+
+**v0.1** `eval` is fixture-versus-candidate. **v0.2** adds two-model execution: `record` a baseline model's answers, then `compare` a candidate against that snapshot (or fetch both models live). See [`docs/adr-009-two-model-compare.md`](docs/adr-009-two-model-compare.md).
 
 The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`. With that opt-in, a response whose `model` is the concrete resolved ID (for example `jev-1.13.0`) is accepted; the eval report prints that resolved model. Concrete pins still require exact identity.
 
 ```
-pin contract  →  ship on the pinned model  →  jevcheck eval  →  compatible or breaking
+pin contract  →  ship on the pinned model  →  jevcheck eval     →  compatible or breaking
+                                          →  record → compare  →  compatible or breaking   (v0.2)
 ```
 
 Reports: **unchanged** / **confidence regressions** / **answer flips**, with exact diffs (`billing→general`, `0.94→0.71`) and a nonzero exit on failure.
@@ -43,6 +46,47 @@ jevcheck eval fixtures/support-triage.json \
 
 4. Compatible (exit 0) → change the pin. Breaking (exit 1) → read the diffs; do not upgrade.
 
+## Upgrade flow (v0.2): record baseline → compare candidate
+
+Two-model execution is a **v0.2** capability. `eval` above stays the v0.1 fixture path and is unchanged.
+
+1. Record answers from the model you ship. The file is the same replay JSON `eval --answers` already accepts:
+
+```bash
+# Live (needs TYPESAFE_API_KEY). Pin a catalog version such as jev-1.13.0 in production.
+jevcheck record fixtures/support-triage.json --out baseline-answers.json
+
+# CI / no key: copy a previously recorded snapshot through the same command.
+jevcheck record fixtures/support-triage.json \
+  --answers fixtures/replay-baseline.json \
+  --out baseline-answers.json
+```
+
+2. Compare the candidate against that snapshot:
+
+```bash
+# Live candidate against recorded baseline
+jevcheck compare fixtures/support-triage.json \
+  --from baseline-answers.json \
+  --to jev-1.14
+
+# CI / no key: recorded baseline + candidate replay
+jevcheck compare fixtures/support-triage.json \
+  --from fixtures/replay-baseline.json \
+  --to jev-1.14 \
+  --answers fixtures/replay-breaking.json
+```
+
+3. Or fetch both models in one step (live; needs a key):
+
+```bash
+jevcheck compare fixtures/support-triage.json \
+  --from-model jev-1.13 \
+  --to jev-1.14
+```
+
+`--from` and `--from-model` are mutually exclusive. Identity rules are the v0.1 pins: concrete names must match `response.model` exactly; `jev-latest` / `jev-preview` still need `--allow-unpinned`. Exit codes stay 0 compatible / 1 breaking / 2 usage-or-identity / 3 ops.
+
 Verified System One fields: [`docs/jev-api.md`](docs/jev-api.md).
 
 ## Example
@@ -77,9 +121,15 @@ pytest
 python -m jevcheck eval fixtures/support-triage.json \
   --candidate-model jev-1.14 \
   --answers fixtures/replay-unchanged.json
+python -m jevcheck compare fixtures/support-triage.json \
+  --from fixtures/replay-baseline.json \
+  --to jev-1.14 \
+  --answers fixtures/replay-unchanged.json
 ```
 
 ## For agents / audits
+
+v0.2 two-model lock: [`docs/adr-009-two-model-compare.md`](docs/adr-009-two-model-compare.md).
 
 See [`docs/release-readiness-audit-v0.1.md`](docs/release-readiness-audit-v0.1.md). Recheck: [`docs/release-readiness-audit-v0.1-recheck.md`](docs/release-readiness-audit-v0.1-recheck.md).
 
