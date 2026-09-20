@@ -23,7 +23,12 @@ from jevcheck.client import AUTH_ENV, JevClient
 from jevcheck.compare import compare, record_answers
 from jevcheck.contract import Case, Contract, load_contract, load_replay, write_replay
 from jevcheck.eval import Fetch, evaluate
-from jevcheck.pinning import ModelIdentityError, UnpinnedModelError, require_pinned
+from jevcheck.pinning import (
+    ModelIdentityError,
+    UnpinnedModelError,
+    format_resolved_model,
+    require_pinned,
+)
 
 # Exit 0: compatible. Exit 1: behavioral contract failure.
 # Exit 2: usage / input / identity. Exit 3: operational (HTTP / invalid API body).
@@ -231,9 +236,16 @@ def _run_record(args: argparse.Namespace) -> int:
     )
     write_replay(args.out, recorded)
     title = contract.name or "contract"
+    resolved_models = list(dict.fromkeys(response.model for response in recorded.values()))
+    if len(resolved_models) == 1:
+        resolved = resolved_models[0]
+    elif resolved_models:
+        resolved = ", ".join(resolved_models)
+    else:
+        resolved = baseline
     sys.stdout.write(
         f"jevcheck record: {title}\n"
-        f"baseline: {baseline}\n"
+        f"baseline: {format_resolved_model(baseline, resolved)}\n"
         f"cases: {len(recorded)}\n"
         f"wrote: {args.out}\n"
     )

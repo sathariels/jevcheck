@@ -23,7 +23,7 @@ from jevcheck.contract import (
     require_actionable_resolved_expect,
     resolve_expect,
 )
-from jevcheck.pinning import require_pinned, require_response_identity
+from jevcheck.pinning import format_resolved_model, require_pinned, require_response_identity
 from jevcheck.questions import ChoiceQuestion, NoulQuestion, ScoreQuestion
 
 
@@ -68,6 +68,8 @@ class EvalReport(BaseModel):
     baseline_model: str
     candidate_model: str | None
     mode: Literal["eval", "compare"] = "eval"
+    requested_baseline_model: str | None = None
+    requested_candidate_model: str | None = None
     cases_checked: int
     unchanged: int
     confidence_regressions: int
@@ -81,10 +83,20 @@ class EvalReport(BaseModel):
 
     def summary(self) -> str:
         title = self.name or "contract"
-        candidate = self.candidate_model or "(replay)"
+        reported_candidate = self.candidate_model or "(replay)"
+        candidate = (
+            format_resolved_model(self.requested_candidate_model, reported_candidate)
+            if self.requested_candidate_model
+            else reported_candidate
+        )
+        baseline = (
+            format_resolved_model(self.requested_baseline_model, self.baseline_model)
+            if self.requested_baseline_model
+            else self.baseline_model
+        )
         lines = [
             f"jevcheck {self.mode}: {title}",
-            f"baseline: {self.baseline_model}",
+            f"baseline: {baseline}",
             f"candidate: {candidate}",
             f"cases: {self.cases_checked}",
             "",

@@ -1,6 +1,6 @@
 # ADR 009 — Two-model / baseline comparison (v0.2 slice)
 
-Status: accepted for the v0.2 slice. Packaging version stays `0.1.0` in this PR; the owner can tag `0.2.0` later. This document is the lock for `record` / `compare`.
+Status: accepted for the v0.2 slice. Packaging version is `0.2.0`. The owner tags and publishes to PyPI after merge; this PR does not create a GitHub release. This document is the lock for `record` / `compare`.
 
 v0.1 `eval` remains fixture-versus-candidate. This slice adds a second, explicit path so upgrade safety can mean **baseline answers versus candidate answers**, not only authored `expect` versus candidate.
 
@@ -30,7 +30,7 @@ jevcheck compare CONTRACT --from-model MODEL --to MODEL [--answers CANDIDATE_REP
 
 Compare does not invent a second scoring engine. It builds a derived contract: same cases, questions, defaults, and floors/tolerances; each `expect` field is filled from the baseline answer (`choice` / `noul`+`noul_true` / `score`, plus `baseline_confidence` from the [mapped scalar](jev-api.md#confidence-mapping-used-by-jevcheck)). Then it runs existing `evaluate()` on the candidate.
 
-Missing baseline cases or missing expected fields are usage errors (exit 2), not silent flips. Wrong-kind baseline answers are usage errors. Candidate missing answers stay v0.1 **answer flips**.
+`record` and `compare` reject a wrong-kind answer (choice↔ChoiceAnswer, noul↔NoulAnswer, score↔ScoreAnswer) as a usage error (exit 2) rather than writing a snapshot `compare` cannot load. Missing baseline cases or missing expected fields are usage errors, not silent flips. Candidate missing answers stay v0.1 **answer flips**.
 
 Compare does **not** invent a default `confidence_tolerance`. Drop detection uses the contract’s resolved defaults, same as v0.1.
 
@@ -40,7 +40,7 @@ Reuse v0.1 `require_pinned` / `require_response_identity` for every requested mo
 
 - Concrete pins: exact string equality. `jev-1.13` is not `jev-1.13.0`.
 - Floating aliases (`jev-latest`, `jev-preview`, or any name containing `latest` / `preview`) stay rejected unless `--allow-unpinned`.
-- With that opt-in, a nonempty concrete (non-alias) response model is accepted and reported. jevcheck never rewrites a name.
+- With that opt-in, a nonempty concrete (non-alias) response model is accepted and reported. Record and compare summaries print `alias → resolved` (for example `jev-preview → jev-1.13.0`). jevcheck never rewrites a name.
 
 `record` identity-checks the baseline. `compare --from` identity-checks each recorded baseline response against the contract / `--baseline-model` pin. `compare --from-model` identity-checks the live baseline. The candidate is identity-checked as in `eval`.
 

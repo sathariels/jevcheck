@@ -62,6 +62,8 @@ jevcheck record fixtures/support-triage.json \
   --out baseline-answers.json
 ```
 
+`record` writes only after every answer kind matches the contract question (choice / noul / score). A mismatch is exit 2. Opted-in aliases print the resolved response model in the summary (`jev-preview → jev-1.13.0`).
+
 2. Compare the candidate against that snapshot:
 
 ```bash

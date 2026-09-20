@@ -163,6 +163,39 @@ def test_wrong_kind_baseline_is_usage_error(contract: Contract) -> None:
         contract_from_baseline(contract, broken)
 
 
+def test_record_rejects_noul_answer_for_choice_question(contract: Contract) -> None:
+    """P1: a Noul answer for a choice question must fail at record, not later compare."""
+    baseline = load_replay(FIXTURES / "replay-baseline.json")
+    broken = dict(baseline)
+    broken["ticket-001"] = response(
+        "jev-1.13",
+        intent=noul(0.9),
+        billing=noul(0.95),
+        urgency=score(1.9, 0.9),
+    )
+    with pytest.raises(TypeError, match=r"ticket-001\.intent is noul, expected choice"):
+        record_answers(contract, lambda case: broken[case.id])
+
+
+def test_compare_rejects_noul_answer_for_choice_on_loaded_replay(contract: Contract) -> None:
+    baseline = load_replay(FIXTURES / "replay-baseline.json")
+    broken = dict(baseline)
+    broken["ticket-001"] = response(
+        "jev-1.13",
+        intent=noul(0.9),
+        billing=noul(0.95),
+        urgency=score(1.9, 0.9),
+    )
+    candidate = load_replay(FIXTURES / "replay-unchanged.json")
+    with pytest.raises(TypeError, match="expected choice"):
+        compare(
+            contract,
+            broken,
+            lambda case: candidate[case.id],
+            candidate_model="jev-1.14",
+        )
+
+
 def test_cli_record_then_compare_breaking(tmp_path, capsys) -> None:
     out = tmp_path / "recorded.json"
     record_code = main(
@@ -270,6 +303,171 @@ def test_cli_record_live_without_key(monkeypatch, tmp_path, capsys) -> None:
     captured = capsys.readouterr()
     assert code == EXIT_USAGE
     assert "TYPESAFE_API_KEY" in captured.err
+
+
+def test_cli_record_rejects_noul_for_choice(tmp_path, capsys) -> None:
+    contract = tmp_path / "choice.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-1.13",
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"choice": "b", "min_confidence": 0.0}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    replay = tmp_path / "noul-for-choice.json"
+    replay.write_text(
+        json.dumps(
+            {
+                "c1": {
+                    "model": "jev-1.13",
+                    "answers": {"q": {"type": "noul", "noul": 0.91}},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "should-not-write.json"
+    code = main(
+        [
+            "record",
+            str(contract),
+            "--out",
+            str(out),
+            "--answers",
+            str(replay),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == EXIT_USAGE
+    assert "expected choice" in captured.err
+    assert "c1.q is noul" in captured.err
+    assert not out.exists()
+
+
+def test_cli_record_alias_summary_shows_resolved(tmp_path, capsys) -> None:
+    contract = tmp_path / "alias.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-preview",
+                "allow_unpinned": True,
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"choice": "b", "min_confidence": 0.0}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    replay = tmp_path / "alias-replay.json"
+    replay.write_text(
+        json.dumps(
+            {
+                "c1": {
+                    "model": "jev-1.13.0",
+                    "answers": {
+                        "q": {
+                            "type": "choice",
+                            "choice": "b",
+                            "confidence": 0.51,
+                            "probabilities": {"a": 0.49, "b": 0.51},
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "recorded.json"
+    code = main(
+        [
+            "record",
+            str(contract),
+            "--out",
+            str(out),
+            "--answers",
+            str(replay),
+            "--allow-unpinned",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "jev-preview → jev-1.13.0" in captured.out
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["c1"]["model"] == "jev-1.13.0"
+
+
+def test_cli_compare_alias_summary_shows_resolved(tmp_path, capsys) -> None:
+    contract = tmp_path / "alias.json"
+    contract.write_text(
+        json.dumps(
+            {
+                "baseline_model": "jev-preview",
+                "allow_unpinned": True,
+                "cases": [
+                    {
+                        "id": "c1",
+                        "state": "s",
+                        "questions": {
+                            "q": {"type": "choice", "criteria": {"a": None, "b": None}}
+                        },
+                        "expect": {"q": {"choice": "b", "min_confidence": 0.0}},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    replay = {
+        "c1": {
+            "model": "jev-1.13.0",
+            "answers": {
+                "q": {
+                    "type": "choice",
+                    "choice": "b",
+                    "confidence": 0.51,
+                    "probabilities": {"a": 0.49, "b": 0.51},
+                }
+            },
+        }
+    }
+    baseline = tmp_path / "baseline.json"
+    candidate = tmp_path / "candidate.json"
+    baseline.write_text(json.dumps(replay), encoding="utf-8")
+    candidate.write_text(json.dumps(replay), encoding="utf-8")
+    code = main(
+        [
+            "compare",
+            str(contract),
+            "--from",
+            str(baseline),
+            "--to",
+            "jev-preview",
+            "--answers",
+            str(candidate),
+            "--allow-unpinned",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "jev-preview → jev-1.13.0" in captured.out
 
 
 def test_cli_eval_fixture_path_unchanged(capsys) -> None:

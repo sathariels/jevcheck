@@ -4,8 +4,13 @@ import json
 import subprocess
 import sys
 
+import jevcheck
 from jevcheck.cli import EXIT_USAGE, main
 from tests.helpers import FIXTURES
+
+
+def test_package_version_is_0_2_0() -> None:
+    assert jevcheck.__version__ == "0.2.0"
 
 
 def test_cli_compatible_exit_zero() -> None:
