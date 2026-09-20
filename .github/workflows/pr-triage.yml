@@ -1,5 +1,7 @@
 # Optional live PR triage via sathariels/jevtriage.
-# Skipped when TYPESAFE_API_KEY is unset so public forks / default CI stay green.
+# GitHub rejects `secrets` in `jobs.<id>.if` (Unrecognized named-value: 'secrets').
+# A step gate is the equivalent of `if: ${{ secrets.TYPESAFE_API_KEY != '' }}`:
+# skip live triage when the secret is unset so public forks / default CI stay green.
 # uses: @main until sathariels/jevtriage@v0.1.0 is cut.
 name: pr-triage
 
@@ -13,10 +15,23 @@ permissions:
 
 jobs:
   triage:
-    if: ${{ secrets.TYPESAFE_API_KEY != '' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Gate on TYPESAFE_API_KEY
+        id: gate
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: |
+          if [ -n "${TYPESAFE_API_KEY}" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "TYPESAFE_API_KEY is set; running jevtriage"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "TYPESAFE_API_KEY is unset; skipping jevtriage so default CI stays green"
+          fi
+
       - uses: sathariels/jevtriage@main
+        if: ${{ steps.gate.outputs.enabled == 'true' }}
         id: triage
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
