@@ -1,0 +1,216 @@
+name: jevcheck
+description: >
+  Install jevcheck from PyPI and run eval, compare, or record to gate Jev
+  model upgrades. Exit 1 fails the job on a breaking contract.
+author: sathariels
+branding:
+  icon: check-square
+  color: purple
+
+inputs:
+  contract:
+    description: Path to a contract JSON or JSONL fixture file (CLI positional).
+    required: true
+  command:
+    description: >
+      CLI subcommand. `eval` (default) is the usual CI gate. `compare` checks
+      a candidate against a recorded or live baseline. `record` writes a replay
+      file (rarely useful in CI unless you upload that file as an artifact).
+    required: false
+    default: eval
+  candidate-model:
+    description: >
+      Candidate model id. Maps to `eval --candidate-model`. For `compare`, used
+      as `--to` when `to` is omitted. Required for `eval` (or pass `to`).
+    required: false
+    default: ""
+  to:
+    description: >
+      Candidate model id. Maps to `compare --to`. For `eval`, used as
+      `--candidate-model` when `candidate-model` is omitted.
+    required: false
+    default: ""
+  baseline-model:
+    description: >
+      Optional contract baseline override (`--baseline-model`). Required for
+      JSONL fixtures that have no `_meta` baseline. Not a live fetch by itself.
+    required: false
+    default: ""
+  from-model:
+    description: >
+      Live baseline model for `compare --from-model` (mutually exclusive with
+      `from`). Needs `TYPESAFE_API_KEY` unless you also pass `answers` for the
+      candidate only — the baseline fetch is still live.
+    required: false
+    default: ""
+  from:
+    description: >
+      Path to a recorded baseline replay JSON (`compare --from`). Use this in
+      CI instead of `from-model` so no API key is required.
+    required: false
+    default: ""
+  answers:
+    description: >
+      Replay JSON of mocked System One responses keyed by case id. For `eval`
+      and `compare` this is the candidate replay (CI without an API key). For
+      `record` it is the baseline replay copied through to `--out`.
+    required: false
+    default: ""
+  out:
+    description: >
+      Output path for `record --out` (replay JSON). Required when
+      `command` is `record`. Upload the file as a workflow artifact if you
+      need it after the job.
+    required: false
+    default: ""
+  allow-unpinned:
+    description: >
+      Pass `--allow-unpinned` so floating names such as `jev-latest` and
+      `jev-preview` are accepted (response `model` must still resolve to a
+      concrete id).
+    required: false
+    default: "false"
+  python-version:
+    description: Python version for actions/setup-python.
+    required: false
+    default: "3.12"
+  jevcheck-version:
+    description: PyPI version pin installed as `jevcheck==<version>`.
+    required: false
+    default: "0.2.0"
+  working-directory:
+    description: >
+      Directory to run the CLI from. Contract, replay, and `out` paths are
+      resolved relative to this directory.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install jevcheck
+      shell: bash
+      env:
+        JEVCHECK_VERSION: ${{ inputs.jevcheck-version }}
+      run: |
+        set -euo pipefail
+        python -m pip install --disable-pip-version-check "jevcheck==${JEVCHECK_VERSION}"
+
+    - name: Run jevcheck
+      shell: bash
+      env:
+        JEVCHECK_COMMAND: ${{ inputs.command }}
+        JEVCHECK_CONTRACT: ${{ inputs.contract }}
+        JEVCHECK_CANDIDATE_MODEL: ${{ inputs.candidate-model }}
+        JEVCHECK_TO: ${{ inputs.to }}
+        JEVCHECK_BASELINE_MODEL: ${{ inputs.baseline-model }}
+        JEVCHECK_FROM_MODEL: ${{ inputs.from-model }}
+        JEVCHECK_FROM: ${{ inputs.from }}
+        JEVCHECK_ANSWERS: ${{ inputs.answers }}
+        JEVCHECK_OUT: ${{ inputs.out }}
+        JEVCHECK_ALLOW_UNPINNED: ${{ inputs.allow-unpinned }}
+        JEVCHECK_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+
+        if [ -n "${JEVCHECK_WORKING_DIRECTORY}" ]; then
+          cd "${JEVCHECK_WORKING_DIRECTORY}"
+        fi
+
+        command="${JEVCHECK_COMMAND}"
+        contract="${JEVCHECK_CONTRACT}"
+        candidate="${JEVCHECK_CANDIDATE_MODEL}"
+        to="${JEVCHECK_TO}"
+        baseline="${JEVCHECK_BASELINE_MODEL}"
+        from_model="${JEVCHECK_FROM_MODEL}"
+        from_replay="${JEVCHECK_FROM}"
+        answers="${JEVCHECK_ANSWERS}"
+        out="${JEVCHECK_OUT}"
+        allow="${JEVCHECK_ALLOW_UNPINNED}"
+
+        if [ -n "${candidate}" ] && [ -n "${to}" ] && [ "${candidate}" != "${to}" ]; then
+          echo "jevcheck action: candidate-model (${candidate}) and to (${to}) disagree" >&2
+          exit 2
+        fi
+        if [ -z "${candidate}" ] && [ -n "${to}" ]; then
+          candidate="${to}"
+        fi
+        if [ -z "${to}" ] && [ -n "${candidate}" ]; then
+          to="${candidate}"
+        fi
+
+        args=("${command}" "${contract}")
+
+        case "${command}" in
+          eval)
+            if [ -z "${candidate}" ]; then
+              echo "jevcheck action: eval requires candidate-model (or to)" >&2
+              exit 2
+            fi
+            args+=(--candidate-model "${candidate}")
+            if [ -n "${baseline}" ]; then
+              args+=(--baseline-model "${baseline}")
+            fi
+            if [ -n "${answers}" ]; then
+              args+=(--answers "${answers}")
+            fi
+            ;;
+          compare)
+            if [ -z "${to}" ]; then
+              echo "jevcheck action: compare requires to (or candidate-model)" >&2
+              exit 2
+            fi
+            if [ -n "${from_replay}" ] && [ -n "${from_model}" ]; then
+              echo "jevcheck action: from and from-model are mutually exclusive" >&2
+              exit 2
+            fi
+            if [ -z "${from_replay}" ] && [ -z "${from_model}" ]; then
+              echo "jevcheck action: compare requires from or from-model" >&2
+              exit 2
+            fi
+            if [ -n "${from_replay}" ]; then
+              args+=(--from "${from_replay}")
+            fi
+            if [ -n "${from_model}" ]; then
+              args+=(--from-model "${from_model}")
+            fi
+            args+=(--to "${to}")
+            if [ -n "${baseline}" ]; then
+              args+=(--baseline-model "${baseline}")
+            fi
+            if [ -n "${answers}" ]; then
+              args+=(--answers "${answers}")
+            fi
+            ;;
+          record)
+            if [ -z "${out}" ]; then
+              echo "jevcheck action: record requires out" >&2
+              exit 2
+            fi
+            args+=(--out "${out}")
+            if [ -n "${baseline}" ]; then
+              args+=(--baseline-model "${baseline}")
+            fi
+            if [ -n "${answers}" ]; then
+              args+=(--answers "${answers}")
+            fi
+            ;;
+          *)
+            echo "jevcheck action: unknown command '${command}' (use eval, compare, or record)" >&2
+            exit 2
+            ;;
+        esac
+
+        case "${allow}" in
+          true|True|TRUE|yes|Yes|YES|1)
+            args+=(--allow-unpinned)
+            ;;
+        esac
+
+        echo "running: python -m jevcheck ${args[*]}"
+        python -m jevcheck "${args[@]}"

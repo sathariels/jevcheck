@@ -115,6 +115,63 @@ if report.breaking:
 
 A `Gate` helper exists for auto / ask-human / reject thresholds. It is optional and is not the product.
 
+## GitHub Action
+
+Reuse jevcheck from other repos as a [composite action](.github/actions/jevcheck/action.yml). The action sets up Python, installs `jevcheck` from PyPI, and runs `eval` (default), `compare`, or `record`. A nonzero CLI exit fails the job (exit 1 is a breaking contract).
+
+Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. **Use `@main` until a dedicated action tag exists:**
+
+```yaml
+- uses: sathariels/jevcheck/.github/actions/jevcheck@main
+  with:
+    contract: contracts/support.json
+    command: compare
+    from: fixtures/baseline.json
+    to: jev-1.14
+    answers: fixtures/candidate-replay.json
+```
+
+`v0.2.0` is the PyPI package tag and **does not include this action**. Do not retag that release. `uses: ...@v0.2.0` will fail (or stay on a tree without the action) until a new tag that contains `.github/actions/jevcheck` is cut — for example `action-v1` after this lands on `main`.
+
+This repo’s [example workflow](.github/workflows/jevcheck-example.yml) is the green CI proof: `eval` (and `compare`) on `fixtures/support-triage.json` + `fixtures/replay-unchanged.json`. No `TYPESAFE_API_KEY`. A breaking replay (`fixtures/replay-breaking.json`) exits 1; do not mark a job that uses it as a required check.
+
+### Inputs
+
+| Input | Default | Maps to |
+| --- | --- | --- |
+| `contract` (required) | — | CLI positional (JSON or JSONL) |
+| `command` | `eval` | `eval` / `compare` / `record` |
+| `candidate-model` | — | `eval --candidate-model` (also fills `compare --to` if `to` is empty) |
+| `to` | — | `compare --to` (also fills `eval --candidate-model` if that input is empty) |
+| `baseline-model` | — | `--baseline-model` (contract / JSONL override; not a live fetch) |
+| `from-model` | — | `compare --from-model` (live baseline; exclusive with `from`) |
+| `from` | — | `compare --from` (recorded baseline replay) |
+| `answers` | — | `--answers` (candidate replay for `eval`/`compare`; baseline replay for `record`) |
+| `out` | — | `record --out` (required when `command` is `record`) |
+| `allow-unpinned` | `false` | `--allow-unpinned` |
+| `python-version` | `3.12` | `actions/setup-python` |
+| `jevcheck-version` | `0.2.0` | `pip install jevcheck==…` |
+| `working-directory` | — | `cd` before the CLI; paths are relative to it |
+
+`candidate-model` and `to` are aliases for the same candidate id. If both are set they must match. `from` and `from-model` stay mutually exclusive, same as the CLI.
+
+### Live calls
+
+Omit `answers` (and use `from-model` instead of `from`) only when the job has a TypeSafe key:
+
+```yaml
+- uses: sathariels/jevcheck/.github/actions/jevcheck@main
+  env:
+    TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+  with:
+    contract: contracts/support.json
+    command: compare
+    from-model: jev-1.13.0
+    to: jev-1.14
+```
+
+`record` is the same: pass `answers` to copy a snapshot in CI, or set the key and `out`, then upload the file as an artifact.
+
 ## Develop
 
 ```bash
