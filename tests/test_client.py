@@ -43,7 +43,7 @@ class FakeSDK:
 
 def test_client_adapts_mocked_sdk_and_pins_model() -> None:
     sdk = FakeSDK()
-    client = JevClient(model="jev-1.13", api_key="not-a-real-key", sdk_client=sdk)
+    client = JevClient(model="jev-1.13", sdk_client=sdk)
     result = client.system_one(
         state="I was charged twice.",
         questions={
@@ -74,8 +74,8 @@ def test_client_adapts_mocked_sdk_and_pins_model() -> None:
 
 def test_client_rejects_unpinned_model() -> None:
     with pytest.raises(UnpinnedModelError):
-        JevClient(model="jev-latest", api_key="not-a-real-key")
-    client = JevClient(model="jev-1.13", api_key="not-a-real-key", sdk_client=FakeSDK())
+        JevClient(model="jev-latest")
+    client = JevClient(model="jev-1.13", sdk_client=FakeSDK())
     with pytest.raises(UnpinnedModelError):
         client.system_one(
             state="x",
