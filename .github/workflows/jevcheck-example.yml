@@ -1,0 +1,41 @@
+# Exercises the reusable composite action against in-repo replay fixtures.
+# No TYPESAFE_API_KEY is required. A breaking-replay job is intentionally
+# omitted so this workflow can stay a required green check.
+name: jevcheck example
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  eval-unchanged:
+    name: eval unchanged replay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate candidate against contract (replay, no API key)
+        uses: ./.github/actions/jevcheck
+        with:
+          contract: fixtures/support-triage.json
+          command: eval
+          candidate-model: jev-1.14
+          answers: fixtures/replay-unchanged.json
+
+  compare-unchanged:
+    name: compare unchanged replay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare candidate replay to recorded baseline
+        uses: ./.github/actions/jevcheck
+        with:
+          contract: fixtures/support-triage.json
+          command: compare
+          from: fixtures/replay-baseline.json
+          to: jev-1.14
+          answers: fixtures/replay-unchanged.json
