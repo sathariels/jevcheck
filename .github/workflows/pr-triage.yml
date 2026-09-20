@@ -1,0 +1,25 @@
+# Optional live PR triage via sathariels/jevtriage.
+# Skipped when TYPESAFE_API_KEY is unset so public forks / default CI stay green.
+# uses: @main until sathariels/jevtriage@v0.1.0 is cut.
+name: pr-triage
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  triage:
+    if: ${{ secrets.TYPESAFE_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: sathariels/jevtriage@main
+        id: triage
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        with:
+          model: jev-1.13.0
+          apply-labels: true

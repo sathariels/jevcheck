@@ -188,6 +188,10 @@ python -m jevcheck compare fixtures/support-triage.json \
   --answers fixtures/replay-unchanged.json
 ```
 
+## Related
+
+[jevtriage](https://github.com/sathariels/jevtriage) is an optional PR triage gate (`ready` / `needs_review` / `risky`). This repo’s [pr-triage workflow](.github/workflows/pr-triage.yml) runs it only when the `TYPESAFE_API_KEY` repository secret is set, so public forks and default CI stay green without the secret.
+
 ## For agents / audits
 
 v0.2 two-model lock: [`docs/adr-009-two-model-compare.md`](docs/adr-009-two-model-compare.md).
