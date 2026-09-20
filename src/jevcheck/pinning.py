@@ -92,3 +92,10 @@ def require_response_identity(
             f"response model {actual!r} does not match requested candidate {requested!r}"
         )
     return actual
+
+
+def format_resolved_model(requested: str, resolved: str) -> str:
+    """Console label: show ``alias → concrete`` when they differ."""
+    if resolved != requested:
+        return f"{requested} → {resolved}"
+    return resolved

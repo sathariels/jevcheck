@@ -7,6 +7,7 @@ from jevcheck.eval import evaluate
 from jevcheck.pinning import (
     ModelIdentityError,
     UnpinnedModelError,
+    format_resolved_model,
     is_unpinned,
     require_pinned,
     require_response_identity,
@@ -84,6 +85,11 @@ def test_alias_opt_in_rejects_floating_response_model() -> None:
         require_response_identity("jev-latest", "jev-preview", allow_unpinned=True)
     with pytest.raises(ModelIdentityError, match="floating alias"):
         require_response_identity("jev-preview", "jev-preview", allow_unpinned=True)
+
+
+def test_format_resolved_model_shows_alias_arrow() -> None:
+    assert format_resolved_model("jev-preview", "jev-1.13.0") == "jev-preview → jev-1.13.0"
+    assert format_resolved_model("jev-1.13", "jev-1.13") == "jev-1.13"
 
 
 def test_concrete_pin_still_requires_exact_identity() -> None:

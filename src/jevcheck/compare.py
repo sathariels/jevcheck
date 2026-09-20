@@ -23,6 +23,47 @@ from jevcheck.pinning import require_pinned, require_response_identity
 from jevcheck.questions import ChoiceQuestion, NoulQuestion, ScoreQuestion
 
 
+def require_answer_kind(
+    *,
+    case_id: str,
+    field: str,
+    question: object,
+    actual: ChoiceAnswer | NoulAnswer | ScoreAnswer,
+) -> None:
+    """Fail closed when a recorded answer type does not match the question kind."""
+    if isinstance(question, ChoiceQuestion):
+        expected_type, expected_kind = ChoiceAnswer, "choice"
+    elif isinstance(question, NoulQuestion):
+        expected_type, expected_kind = NoulAnswer, "noul"
+    elif isinstance(question, ScoreQuestion):
+        expected_type, expected_kind = ScoreAnswer, "score"
+    else:
+        raise TypeError(
+            f"baseline {case_id}.{field}: unsupported question type {type(question).__name__}"
+        )
+    if not isinstance(actual, expected_type):
+        raise TypeError(
+            f"baseline {case_id}.{field} is {actual.type}, expected {expected_kind}"
+        )
+
+
+def require_response_answer_kinds(case: Case, response: JevResponse) -> None:
+    """Validate every expected field exists and matches the contract question kind."""
+    missing = [name for name in case.expect if name not in response.answers]
+    if missing:
+        raise KeyError(f"baseline answers missing {case.id} fields: {missing}")
+    for name, question in case.questions.items():
+        actual = response.answers.get(name)
+        if actual is None:
+            continue
+        require_answer_kind(
+            case_id=case.id,
+            field=name,
+            question=question,
+            actual=actual,
+        )
+
+
 def record_answers(
     contract: Contract,
     fetch: Fetch,
@@ -39,9 +80,7 @@ def record_answers(
     for case in contract.cases:
         response = fetch(case)
         require_response_identity(response.model, requested, allow_unpinned=opt_in)
-        missing = [name for name in case.expect if name not in response.answers]
-        if missing:
-            raise KeyError(f"baseline answers missing {case.id} fields: {missing}")
+        require_response_answer_kinds(case, response)
         recorded[case.id] = response
     return recorded
 
@@ -82,23 +121,21 @@ def expect_from_baseline_answer(
 ) -> FieldExpect:
     if actual is None:
         raise KeyError(f"baseline answers missing {case_id}.{field}")
+    require_answer_kind(
+        case_id=case_id,
+        field=field,
+        question=question,
+        actual=actual,
+    )
     resolved = resolve_expect(original, defaults)
-    if isinstance(question, ChoiceQuestion):
-        if not isinstance(actual, ChoiceAnswer):
-            raise TypeError(
-                f"baseline {case_id}.{field} is {actual.type}, expected choice"
-            )
+    if isinstance(question, ChoiceQuestion) and isinstance(actual, ChoiceAnswer):
         return resolved.model_copy(
             update={
                 "choice": actual.choice,
                 "baseline_confidence": mapped_confidence(actual),
             }
         )
-    if isinstance(question, NoulQuestion):
-        if not isinstance(actual, NoulAnswer):
-            raise TypeError(
-                f"baseline {case_id}.{field} is {actual.type}, expected noul"
-            )
+    if isinstance(question, NoulQuestion) and isinstance(actual, NoulAnswer):
         return resolved.model_copy(
             update={
                 "noul": actual.noul,
@@ -106,11 +143,7 @@ def expect_from_baseline_answer(
                 "baseline_confidence": mapped_confidence(actual),
             }
         )
-    if isinstance(question, ScoreQuestion):
-        if not isinstance(actual, ScoreAnswer):
-            raise TypeError(
-                f"baseline {case_id}.{field} is {actual.type}, expected score"
-            )
+    if isinstance(question, ScoreQuestion) and isinstance(actual, ScoreAnswer):
         return resolved.model_copy(
             update={
                 "score": actual.score,
@@ -139,11 +172,13 @@ def compare(
 
     resolved_baselines: list[str] = []
     for case in contract.cases:
+        response = baseline[case.id]
         resolved_baselines.append(
             require_response_identity(
-                baseline[case.id].model, requested_baseline, allow_unpinned=opt_in
+                response.model, requested_baseline, allow_unpinned=opt_in
             )
         )
+        require_response_answer_kinds(case, response)
 
     derived = contract_from_baseline(contract, baseline)
     report = evaluate(
@@ -154,4 +189,11 @@ def compare(
     )
     unique = list(dict.fromkeys(resolved_baselines))
     reported_baseline = unique[0] if len(unique) == 1 else requested_baseline
-    return report.model_copy(update={"mode": "compare", "baseline_model": reported_baseline})
+    return report.model_copy(
+        update={
+            "mode": "compare",
+            "baseline_model": reported_baseline,
+            "requested_baseline_model": requested_baseline,
+            "requested_candidate_model": candidate_model,
+        }
+    )
