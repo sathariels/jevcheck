@@ -180,6 +180,7 @@ def _triage_body(model: str, state: str) -> dict:
         intent = ("general", 0.88) if model == "jev-1.13" else ("billing", 0.81)
         return {
             "model": model,
+            "usage": {"input_tokens": 2, "output_tokens": 1},
             "answers": {
                 "intent": {
                     "type": "choice",
@@ -196,6 +197,7 @@ def _triage_body(model: str, state: str) -> dict:
         confidence = 0.91 if model == "jev-1.13" else 0.71
         return {
             "model": model,
+            "usage": {"input_tokens": 2, "output_tokens": 1},
             "answers": {
                 "intent": {
                     "type": "choice",
@@ -214,6 +216,7 @@ def _triage_body(model: str, state: str) -> dict:
         }
     return {
         "model": model,
+        "usage": {"input_tokens": 2, "output_tokens": 1},
         "answers": {
             "intent": {
                 "type": "choice",
