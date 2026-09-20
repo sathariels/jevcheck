@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -67,6 +67,7 @@ class EvalReport(BaseModel):
     name: str | None
     baseline_model: str
     candidate_model: str | None
+    mode: Literal["eval", "compare"] = "eval"
     cases_checked: int
     unchanged: int
     confidence_regressions: int
@@ -82,7 +83,7 @@ class EvalReport(BaseModel):
         title = self.name or "contract"
         candidate = self.candidate_model or "(replay)"
         lines = [
-            f"jevcheck eval: {title}",
+            f"jevcheck {self.mode}: {title}",
             f"baseline: {self.baseline_model}",
             f"candidate: {candidate}",
             f"cases: {self.cases_checked}",

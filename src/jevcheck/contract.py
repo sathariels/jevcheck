@@ -163,6 +163,15 @@ def dump_replay(responses: Mapping[str, JevResponse]) -> dict[str, Any]:
     }
 
 
+def write_replay(path: str | Path, responses: Mapping[str, JevResponse]) -> None:
+    """Write a replay JSON usable by ``eval --answers`` and ``compare --from``."""
+    destination = Path(path)
+    destination.write_text(
+        json.dumps(dump_replay(responses), indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def resolve_expect(expect: FieldExpect, defaults: ContractDefaults) -> FieldExpect:
     return expect.model_copy(
         update={

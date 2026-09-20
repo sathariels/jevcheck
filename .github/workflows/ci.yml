@@ -39,6 +39,10 @@ jobs:
           "$RUNNER_TEMP/wheel/bin/jevcheck" eval fixtures/support-triage.json \
             --candidate-model jev-1.14 \
             --answers fixtures/replay-unchanged.json
+          "$RUNNER_TEMP/wheel/bin/jevcheck" compare fixtures/support-triage.json \
+            --from fixtures/replay-baseline.json \
+            --to jev-1.14 \
+            --answers fixtures/replay-unchanged.json
           "$RUNNER_TEMP/wheel/bin/python" -c "import jevcheck,inspect; print(jevcheck.__version__)"
       - name: sdist includes tests/fixtures and pytest collects
         run: |
