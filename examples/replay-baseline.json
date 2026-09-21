@@ -1,0 +1,24 @@
+{
+  "billing-charge": {
+    "model": "jev-1.13",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "billing",
+        "confidence": 0.94,
+        "probabilities": {"billing": 0.94, "general": 0.06}
+      }
+    }
+  },
+  "email-settings": {
+    "model": "jev-1.13",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "general",
+        "confidence": 0.9,
+        "probabilities": {"billing": 0.1, "general": 0.9}
+      }
+    }
+  }
+}

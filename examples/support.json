@@ -1,0 +1,47 @@
+{
+  "version": "0.1",
+  "name": "support-example",
+  "baseline_model": "jev-1.13",
+  "defaults": {
+    "min_confidence": 0.8,
+    "confidence_tolerance": 0.1
+  },
+  "cases": [
+    {
+      "id": "billing-charge",
+      "state": "I was charged twice. Please fix this ASAP.",
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What is this ticket about?",
+          "criteria": {"billing": null, "general": null}
+        }
+      },
+      "expect": {
+        "intent": {
+          "choice": "billing",
+          "min_confidence": 0.85,
+          "baseline_confidence": 0.94
+        }
+      }
+    },
+    {
+      "id": "email-settings",
+      "state": "Where do I change my notification email?",
+      "questions": {
+        "intent": {
+          "type": "choice",
+          "instructions": "What is this ticket about?",
+          "criteria": {"billing": null, "general": null}
+        }
+      },
+      "expect": {
+        "intent": {
+          "choice": "general",
+          "baseline_confidence": 0.9,
+          "min_confidence": 0.8
+        }
+      }
+    }
+  ]
+}
