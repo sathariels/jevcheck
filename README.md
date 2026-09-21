@@ -6,6 +6,8 @@
 
 Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and evals a candidate against that fixture.
 
+**New here?** Walk through the [first-run tutorial](docs/tutorial.md) (about 10 minutes, offline replay). Copy the [examples pack](examples/README.md) into your repo.
+
 **v0.1** `eval` is fixture-versus-candidate. **v0.2** adds two-model execution: `record` a baseline model's answers, then `compare` a candidate against that snapshot (or fetch both models live). See [`docs/adr-009-two-model-compare.md`](docs/adr-009-two-model-compare.md).
 
 The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`. With that opt-in, a response whose `model` is the concrete resolved ID (for example `jev-1.13.0`) is accepted; the eval report prints that resolved model. Concrete pins still require exact identity.

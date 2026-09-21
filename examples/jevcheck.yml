@@ -1,0 +1,48 @@
+# Adopter sample: fixture-only eval and compare. No TYPESAFE_API_KEY.
+# Copy this file to .github/workflows/jevcheck.yml.
+# Paths assume examples/ stays at the repository root.
+# A breaking replay exits 1; keep that command local so this workflow can stay green.
+# Use @main until a tag that contains .github/actions/jevcheck exists.
+# The PyPI tag v0.2.0 does not include the action.
+name: jevcheck
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  eval-unchanged:
+    name: eval unchanged replay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Gate candidate against contract (replay, no API key)
+        uses: sathariels/jevcheck/.github/actions/jevcheck@main
+        with:
+          contract: examples/support.json
+          command: eval
+          candidate-model: jev-1.14
+          answers: examples/replay-unchanged.json
+
+  compare-unchanged:
+    name: compare unchanged replay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Compare candidate replay to recorded baseline
+        uses: sathariels/jevcheck/.github/actions/jevcheck@main
+        with:
+          contract: examples/support.json
+          command: compare
+          from: examples/replay-baseline.json
+          to: jev-1.14
+          answers: examples/replay-unchanged.json

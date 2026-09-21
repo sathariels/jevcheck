@@ -1,6 +1,7 @@
 graft tests
 graft fixtures
 graft docs
+graft examples
 include LICENSE
 include README.md
 include SECURITY.md
