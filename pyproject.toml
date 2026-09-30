@@ -1,22 +1,24 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "jevcheck"
-version = "0.2.0"
+version = "0.2.1"
 description = "pytest for Jev — pin production behavioral contracts and eval candidate model upgrades"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Nithilan Kumaran" }]
 keywords = ["jev", "typesafe", "eval", "contract", "model-upgrade"]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 dependencies = [
@@ -32,7 +34,10 @@ jevcheck = "jevcheck.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/sathariels/jevcheck"
+Source = "https://github.com/sathariels/jevcheck"
 Documentation = "https://github.com/sathariels/jevcheck"
+Issues = "https://github.com/sathariels/jevcheck/issues"
+Changelog = "https://github.com/sathariels/jevcheck/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]

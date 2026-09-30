@@ -17,7 +17,7 @@ pip install -e ".[dev]"
 Or install the published package and copy the [examples pack](../examples/README.md) into your own repo:
 
 ```bash
-pip install "jevcheck==0.2.0"
+pip install "jevcheck==0.2.1"
 ```
 
 `jevcheck` and `python -m jevcheck` run the same CLI. Use the module form when the `jevcheck` script is not on your `PATH`.
@@ -152,7 +152,7 @@ Other repos can call the [composite action](../.github/actions/jevcheck/action.y
 Copy [`examples/jevcheck.yml`](../examples/jevcheck.yml) to `.github/workflows/jevcheck.yml`. It runs fixture-only `eval` and `compare` and does not set `TYPESAFE_API_KEY`. The breaking replay stays local so the workflow can remain a green check.
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@main
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
   with:
     contract: examples/support.json
     command: compare
@@ -161,7 +161,7 @@ Copy [`examples/jevcheck.yml`](../examples/jevcheck.yml) to `.github/workflows/j
     answers: examples/replay-unchanged.json
 ```
 
-Use `@main` until a tag that contains `.github/actions/jevcheck` exists. The PyPI tag `v0.2.0` does not include the action. This repo's in-tree proof is [`.github/workflows/jevcheck-example.yml`](../.github/workflows/jevcheck-example.yml), which points `uses:` at `./.github/actions/jevcheck` and the fuller `fixtures/` set.
+Pin `@v0.2.1`, the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action. This repo's in-tree proof is [`.github/workflows/jevcheck-example.yml`](../.github/workflows/jevcheck-example.yml), which points `uses:` at `./.github/actions/jevcheck` and the fuller `fixtures/` set.
 
 ## 7. Optional PR gate (jevtriage)
 
