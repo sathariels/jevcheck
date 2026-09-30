@@ -2,8 +2,8 @@
 # Copy this file to .github/workflows/jevcheck.yml.
 # Paths assume examples/ stays at the repository root.
 # A breaking replay exits 1; keep that command local so this workflow can stay green.
-# Use @main until a tag that contains .github/actions/jevcheck exists.
-# The PyPI tag v0.2.0 does not include the action.
+# Pin @v0.2.1, the first tag that contains .github/actions/jevcheck.
+# v0.2.0 does not include the action.
 name: jevcheck
 
 on:
@@ -24,7 +24,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Gate candidate against contract (replay, no API key)
-        uses: sathariels/jevcheck/.github/actions/jevcheck@main
+        uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
         with:
           contract: examples/support.json
           command: eval
@@ -39,7 +39,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Compare candidate replay to recorded baseline
-        uses: sathariels/jevcheck/.github/actions/jevcheck@main
+        uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
         with:
           contract: examples/support.json
           command: compare

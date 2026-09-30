@@ -66,6 +66,6 @@ Exit 1.
 
 Copy `jevcheck.yml` to `.github/workflows/jevcheck.yml`. Leave this directory at the repo root so the workflow paths (`examples/support.json`, `examples/replay-unchanged.json`, `examples/replay-baseline.json`) resolve. If you move the JSON files, change those inputs.
 
-The workflow calls `sathariels/jevcheck/.github/actions/jevcheck@main`, installs `jevcheck==0.2.0` from PyPI, and runs `eval` plus `compare` on the unchanged replay. It does not set `TYPESAFE_API_KEY`. The breaking replay is omitted because exit 1 fails the job.
+The workflow calls `sathariels/jevcheck/.github/actions/jevcheck@v0.2.1`, installs `jevcheck==0.2.1` from PyPI, and runs `eval` plus `compare` on the unchanged replay. It does not set `TYPESAFE_API_KEY`. The breaking replay is omitted because exit 1 fails the job.
 
-Use `@main` until a tag that contains `.github/actions/jevcheck` exists. `v0.2.0` is the PyPI package tag and does not include the action.
+Pin `@v0.2.1`, the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action.

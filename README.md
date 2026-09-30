@@ -6,9 +6,9 @@
 
 Probabilities and model versions move. A raw `0.94` is not a release decision. jevcheck records a **production contract** (baseline model + fixtures + expected answers) and evals a candidate against that fixture.
 
-**New here?** Walk through the [first-run tutorial](docs/tutorial.md) (about 10 minutes, offline replay). Copy the [examples pack](examples/README.md) into your repo.
+**New here?** Walk through the [first-run tutorial](https://github.com/sathariels/jevcheck/blob/main/docs/tutorial.md) (about 10 minutes, offline replay). Copy the [examples pack](https://github.com/sathariels/jevcheck/blob/main/examples/README.md) into your repo.
 
-**v0.1** `eval` is fixture-versus-candidate. **v0.2** adds two-model execution: `record` a baseline model's answers, then `compare` a candidate against that snapshot (or fetch both models live). See [`docs/adr-009-two-model-compare.md`](docs/adr-009-two-model-compare.md).
+**v0.1** `eval` is fixture-versus-candidate. **v0.2** adds two-model execution: `record` a baseline model's answers, then `compare` a candidate against that snapshot (or fetch both models live). See [`docs/adr-009-two-model-compare.md`](https://github.com/sathariels/jevcheck/blob/main/docs/adr-009-two-model-compare.md).
 
 The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`. With that opt-in, a response whose `model` is the concrete resolved ID (for example `jev-1.13.0`) is accepted; the eval report prints that resolved model. Concrete pins still require exact identity.
 
@@ -22,15 +22,14 @@ Reports: **unchanged** / **confidence regressions** / **answer flips**, with exa
 ## Install
 
 ```bash
-pip install -e ".[dev]"
-export TYPESAFE_API_KEY=...   # live Jev only; never commit this
+pip install jevcheck
 ```
 
-Auth is `TYPESAFE_API_KEY` only. Unit tests mock the network.
+Auth is `TYPESAFE_API_KEY` only. Set it for live Jev calls and never commit the key. Unit tests mock the network.
 
 ## Pin → eval → upgrade
 
-1. Write a contract (see [`docs/contract.md`](docs/contract.md)) against the model you ship.
+1. Write a contract (see [`docs/contract.md`](https://github.com/sathariels/jevcheck/blob/main/docs/contract.md)) against the model you ship.
 2. Call Jev with that **explicit** model. `jev-latest` and `jev-preview` are rejected unless you opt in. Concrete pins require `response.model` to match exactly. An opted-in alias may resolve to a nonempty concrete (non-alias) response model, which is reported.
 3. Before upgrading, eval the candidate (example fixture label — not a verified live ID):
 
@@ -93,7 +92,7 @@ jevcheck compare fixtures/support-triage.json \
 
 `--from` and `--from-model` are mutually exclusive. Identity rules are the v0.1 pins: concrete names must match `response.model` exactly; `jev-latest` / `jev-preview` still need `--allow-unpinned`. Exit codes stay 0 compatible / 1 breaking / 2 usage-or-identity / 3 ops.
 
-Verified System One fields: [`docs/jev-api.md`](docs/jev-api.md).
+Verified System One fields: [`docs/jev-api.md`](https://github.com/sathariels/jevcheck/blob/main/docs/jev-api.md).
 
 ## Example
 
@@ -121,12 +120,12 @@ A `Gate` helper exists for auto / ask-human / reject thresholds. It is optional 
 
 ## GitHub Action
 
-Reuse jevcheck from other repos as a [composite action](.github/actions/jevcheck/action.yml). The action sets up Python, installs `jevcheck` from PyPI, and runs `eval` (default), `compare`, or `record`. A nonzero CLI exit fails the job (exit 1 is a breaking contract).
+Reuse jevcheck from other repos as a [composite action](https://github.com/sathariels/jevcheck/blob/main/.github/actions/jevcheck/action.yml). The action sets up Python, installs `jevcheck` from PyPI, and runs `eval` (default), `compare`, or `record`. A nonzero CLI exit fails the job (exit 1 is a breaking contract).
 
-Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. **Use `@main` until a dedicated action tag exists:**
+Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. Pin `@v0.2.1`, the first tag that includes this action:
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@main
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
   with:
     contract: contracts/support.json
     command: compare
@@ -135,9 +134,9 @@ Composite actions live in a subdirectory, so the `uses:` ref must point at a com
     answers: fixtures/candidate-replay.json
 ```
 
-`v0.2.0` is the PyPI package tag and **does not include this action**. Do not retag that release. `uses: ...@v0.2.0` will fail (or stay on a tree without the action) until a new tag that contains `.github/actions/jevcheck` is cut — for example `action-v1` after this lands on `main`.
+`v0.2.0` does not contain `.github/actions/jevcheck`. Pin `@v0.2.1` (or a later tag) for the Action.
 
-This repo’s [example workflow](.github/workflows/jevcheck-example.yml) is the green CI proof: `eval` (and `compare`) on `fixtures/support-triage.json` + `fixtures/replay-unchanged.json`. No `TYPESAFE_API_KEY`. A breaking replay (`fixtures/replay-breaking.json`) exits 1; do not mark a job that uses it as a required check.
+This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/main/.github/workflows/jevcheck-example.yml) is the green CI proof: `eval` (and `compare`) on `fixtures/support-triage.json` + `fixtures/replay-unchanged.json`. No `TYPESAFE_API_KEY`. A breaking replay (`fixtures/replay-breaking.json`) exits 1; do not mark a job that uses it as a required check.
 
 ### Inputs
 
@@ -154,7 +153,7 @@ This repo’s [example workflow](.github/workflows/jevcheck-example.yml) is the 
 | `out` | — | `record --out` (required when `command` is `record`) |
 | `allow-unpinned` | `false` | `--allow-unpinned` |
 | `python-version` | `3.12` | `actions/setup-python` |
-| `jevcheck-version` | `0.2.0` | `pip install jevcheck==…` |
+| `jevcheck-version` | `0.2.1` | `pip install jevcheck==…` |
 | `working-directory` | — | `cd` before the CLI; paths are relative to it |
 
 `candidate-model` and `to` are aliases for the same candidate id. If both are set they must match. `from` and `from-model` stay mutually exclusive, same as the CLI.
@@ -164,7 +163,7 @@ This repo’s [example workflow](.github/workflows/jevcheck-example.yml) is the 
 Omit `answers` (and use `from-model` instead of `from`) only when the job has a TypeSafe key:
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@main
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
   env:
     TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
   with:
@@ -192,12 +191,14 @@ python -m jevcheck compare fixtures/support-triage.json \
 
 ## Related
 
-[jevtriage](https://github.com/sathariels/jevtriage) is an optional PR triage gate (`ready` / `needs_review` / `risky`). This repo’s [pr-triage workflow](.github/workflows/pr-triage.yml) runs it only when the `TYPESAFE_API_KEY` repository secret is set, so public forks and default CI stay green without the secret.
+[jevtriage](https://github.com/sathariels/jevtriage) is an optional PR triage gate (`ready` / `needs_review` / `risky`). This repo’s [pr-triage workflow](https://github.com/sathariels/jevcheck/blob/main/.github/workflows/pr-triage.yml) runs it only when the `TYPESAFE_API_KEY` repository secret is set, so public forks and default CI stay green without the secret.
 
 ## For agents / audits
 
-v0.2 two-model lock: [`docs/adr-009-two-model-compare.md`](docs/adr-009-two-model-compare.md).
+v0.2 two-model lock: [`docs/adr-009-two-model-compare.md`](https://github.com/sathariels/jevcheck/blob/main/docs/adr-009-two-model-compare.md).
 
-See [`docs/release-readiness-audit-v0.1.md`](docs/release-readiness-audit-v0.1.md). Recheck: [`docs/release-readiness-audit-v0.1-recheck.md`](docs/release-readiness-audit-v0.1-recheck.md).
+See [`docs/release-readiness-audit-v0.1.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1.md). Recheck: [`docs/release-readiness-audit-v0.1-recheck.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1-recheck.md).
+
+Release history: [`CHANGELOG.md`](https://github.com/sathariels/jevcheck/blob/main/CHANGELOG.md). Tag and publish steps: [`RELEASING.md`](https://github.com/sathariels/jevcheck/blob/main/RELEASING.md).
 
 MIT.
