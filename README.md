@@ -197,7 +197,7 @@ python -m jevcheck compare fixtures/support-triage.json \
 
 v0.2 two-model lock: [`docs/adr-009-two-model-compare.md`](https://github.com/sathariels/jevcheck/blob/main/docs/adr-009-two-model-compare.md).
 
-See [`docs/release-readiness-audit-v0.1.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1.md). Recheck: [`docs/release-readiness-audit-v0.1-recheck.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1-recheck.md).
+The v0.1 audit ([`docs/release-readiness-audit-v0.1.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1.md)) and recheck ([`docs/release-readiness-audit-v0.1-recheck.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1-recheck.md)) are historical. Each P1/P2 finding in the recheck is resolved in be58041 (v0.2.0).
 
 Release history: [`CHANGELOG.md`](https://github.com/sathariels/jevcheck/blob/main/CHANGELOG.md). Tag and publish steps: [`RELEASING.md`](https://github.com/sathariels/jevcheck/blob/main/RELEASING.md).
 
