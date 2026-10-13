@@ -24,7 +24,7 @@ jobs:
       - name: Install
         run: pip install -e ".[dev]"
       - name: Test
-        run: pytest
+        run: pytest --cov=jevcheck --cov-report=term-missing
 
   packaging:
     runs-on: ubuntu-latest
