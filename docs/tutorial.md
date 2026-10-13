@@ -161,7 +161,7 @@ Copy [`examples/jevcheck.yml`](../examples/jevcheck.yml) to `.github/workflows/j
     answers: examples/replay-unchanged.json
 ```
 
-Pin `@v0.2.2`. `@v0.2.1` is the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action. This repo's in-tree proof is [`.github/workflows/jevcheck-example.yml`](../.github/workflows/jevcheck-example.yml), which points `uses:` at `./.github/actions/jevcheck` and the fuller `fixtures/` set. It installs published `jevcheck==0.2.1` until 0.2.2 is on PyPI.
+Pin `@v0.2.2`. `@v0.2.1` is the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action. This repo's in-tree proof is [`.github/workflows/jevcheck-example.yml`](../.github/workflows/jevcheck-example.yml), which points `uses:` at `./.github/actions/jevcheck` and the fuller `fixtures/` set. It installs the Action default, published `jevcheck==0.2.2`.
 
 ## 7. Optional PR gate (jevtriage)
 

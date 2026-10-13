@@ -23,9 +23,6 @@ jobs:
       - name: Gate candidate against contract (replay, no API key)
         uses: ./.github/actions/jevcheck
         with:
-          # Action default is 0.2.2, which is not on PyPI until the post-merge
-          # upload. Install the published package so this check stays green.
-          jevcheck-version: "0.2.1"
           contract: fixtures/support-triage.json
           command: eval
           candidate-model: jev-1.14
@@ -41,8 +38,6 @@ jobs:
       - name: Compare candidate replay to recorded baseline
         uses: ./.github/actions/jevcheck
         with:
-          # Same published pin as the eval job. Drop this input after 0.2.2 is on PyPI.
-          jevcheck-version: "0.2.1"
           contract: fixtures/support-triage.json
           command: compare
           from: fixtures/replay-baseline.json
