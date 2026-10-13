@@ -135,7 +135,9 @@ def evaluate(
     opt_in = contract.allow_unpinned if allow_unpinned is None else allow_unpinned
     require_pinned(contract.baseline_model, allow_unpinned=opt_in)
     if candidate_model is not None:
-        require_pinned(candidate_model, allow_unpinned=opt_in)
+        # Identity must use the stripped pin. Discarding this return value
+        # let "  jev-1.14  " pass require_pinned and then fail equality.
+        candidate_model = require_pinned(candidate_model, allow_unpinned=opt_in)
 
     results: list[CaseResult] = []
     diffs: list[FieldDiff] = []
