@@ -122,10 +122,10 @@ A `Gate` helper exists for auto / ask-human / reject thresholds. It is optional 
 
 Reuse jevcheck from other repos as a [composite action](https://github.com/sathariels/jevcheck/blob/main/.github/actions/jevcheck/action.yml). The action sets up Python, installs `jevcheck` from PyPI, and runs `eval` (default), `compare`, or `record`. A nonzero CLI exit fails the job (exit 1 is a breaking contract).
 
-Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. Pin `@v0.2.1`, the first tag that includes this action:
+Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. Pin `@v0.2.2`. `@v0.2.1` is the first tag that includes this action:
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
   with:
     contract: contracts/support.json
     command: compare
@@ -134,7 +134,7 @@ Composite actions live in a subdirectory, so the `uses:` ref must point at a com
     answers: fixtures/candidate-replay.json
 ```
 
-`v0.2.0` does not contain `.github/actions/jevcheck`. Pin `@v0.2.1` (or a later tag) for the Action.
+`v0.2.0` does not contain `.github/actions/jevcheck`. Pin `@v0.2.2` (or a later tag). `@v0.2.1` is the first tag that includes the Action.
 
 This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/main/.github/workflows/jevcheck-example.yml) is the green CI proof: `eval` (and `compare`) on `fixtures/support-triage.json` + `fixtures/replay-unchanged.json`. No `TYPESAFE_API_KEY`. A breaking replay (`fixtures/replay-breaking.json`) exits 1; do not mark a job that uses it as a required check.
 
@@ -153,7 +153,7 @@ This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/mai
 | `out` | — | `record --out` (required when `command` is `record`) |
 | `allow-unpinned` | `false` | `--allow-unpinned` |
 | `python-version` | `3.12` | `actions/setup-python` |
-| `jevcheck-version` | `0.2.1` | `pip install jevcheck==…` |
+| `jevcheck-version` | `0.2.2` | `pip install jevcheck==…` |
 | `working-directory` | — | `cd` before the CLI; paths are relative to it |
 
 `candidate-model` and `to` are aliases for the same candidate id. If both are set they must match. `from` and `from-model` stay mutually exclusive, same as the CLI.
@@ -163,7 +163,7 @@ This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/mai
 Omit `answers` (and use `from-model` instead of `from`) only when the job has a TypeSafe key:
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
   env:
     TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
   with:
@@ -197,7 +197,7 @@ python -m jevcheck compare fixtures/support-triage.json \
 
 v0.2 two-model lock: [`docs/adr-009-two-model-compare.md`](https://github.com/sathariels/jevcheck/blob/main/docs/adr-009-two-model-compare.md).
 
-See [`docs/release-readiness-audit-v0.1.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1.md). Recheck: [`docs/release-readiness-audit-v0.1-recheck.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1-recheck.md).
+The v0.1 audit ([`docs/release-readiness-audit-v0.1.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1.md)) and recheck ([`docs/release-readiness-audit-v0.1-recheck.md`](https://github.com/sathariels/jevcheck/blob/main/docs/release-readiness-audit-v0.1-recheck.md)) are historical. Each P1/P2 finding in the recheck is resolved in be58041 (v0.2.0).
 
 Release history: [`CHANGELOG.md`](https://github.com/sathariels/jevcheck/blob/main/CHANGELOG.md). Tag and publish steps: [`RELEASING.md`](https://github.com/sathariels/jevcheck/blob/main/RELEASING.md).
 

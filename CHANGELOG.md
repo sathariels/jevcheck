@@ -5,6 +5,24 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-10-13
+
+### Added
+
+- Eval tests for tolerance edges, several expectations on one case, wrong-type and missing answers, identity failures, and alias resolution.
+- `pytest-cov` on the `dev` extra. CI prints a coverage report and does not fail on a coverage threshold.
+
+### Changed
+
+- `requirements.lock` pins `typesafe-sdk==0.7.4`. The `pyproject.toml` floor stays `typesafe-sdk>=0.7.0`. Releases 0.7.1 through 0.7.4 are bug fixes, an optional `http2` extra, stricter request validation, and non-finite number serialization. They do not change a successful System One call or jevcheck's response adaptation.
+- GitHub Actions stay pinned by commit SHA: `actions/checkout` 7.0.1, `actions/setup-python` 7.0.0, and `hashgraph-online/ai-plugin-scanner-action` 1.2.777 (from 4.2.2, 5.6.0, and 1.2.635). Checkout v5+ and setup-python v6+ run on Node 24 and need Actions runner v2.327.1 or newer. Checkout v7 refuses fork-PR checkouts for `pull_request_target` and `workflow_run`; these workflows do not use those events. `persist-credentials` and `python-version` are unchanged. setup-python v7 removes the unused `pip-install` input. The scanner bump is a patch; `plugin_dir`, `min_score`, and `fail_on_severity` are unchanged.
+- Package version is `0.2.2` in `pyproject.toml`, `jevcheck.__version__`, and the Action input `jevcheck-version` (default `0.2.2`). Documented Action refs pin `@v0.2.2`. `@v0.2.1` remains the first tag that contains the Action.
+- The v0.1 recheck's four P1/P2 findings are marked resolved in be58041 (v0.2.0).
+
+### Fixed
+
+- `evaluate()` identity-checks the stripped candidate returned by `require_pinned`. A concrete name with surrounding whitespace no longer passes the pin check and then fails against the same model id.
+
 ## [0.2.1] - 2026-09-30
 
 Library source since [0.2.0] is the version string only. CLI commands, exit codes, and eval rules are unchanged.
@@ -57,6 +75,7 @@ Library source since [0.2.0] is the version string only. CLI commands, exit code
 - A baseline-confidence-only expect needs a floor or tolerance after defaults. An opted-in floating alias accepts a concrete resolved response model. Replay and adapter paths require nonempty normalized score probabilities and a legend.
 - The sdist ships tests and fixtures.
 
+[0.2.2]: https://github.com/sathariels/jevcheck/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/sathariels/jevcheck/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/sathariels/jevcheck/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sathariels/jevcheck/releases/tag/v0.1.0

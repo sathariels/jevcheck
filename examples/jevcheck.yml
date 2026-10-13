@@ -2,7 +2,7 @@
 # Copy this file to .github/workflows/jevcheck.yml.
 # Paths assume examples/ stays at the repository root.
 # A breaking replay exits 1; keep that command local so this workflow can stay green.
-# Pin @v0.2.1, the first tag that contains .github/actions/jevcheck.
+# Pin @v0.2.2. @v0.2.1 is the first tag that contains .github/actions/jevcheck.
 # v0.2.0 does not include the action.
 name: jevcheck
 
@@ -20,11 +20,11 @@ jobs:
     name: eval unchanged replay
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Gate candidate against contract (replay, no API key)
-        uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
+        uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
         with:
           contract: examples/support.json
           command: eval
@@ -35,11 +35,11 @@ jobs:
     name: compare unchanged replay
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Compare candidate replay to recorded baseline
-        uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.1
+        uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
         with:
           contract: examples/support.json
           command: compare

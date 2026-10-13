@@ -17,12 +17,15 @@ jobs:
     name: eval unchanged replay
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Gate candidate against contract (replay, no API key)
         uses: ./.github/actions/jevcheck
         with:
+          # Action default is 0.2.2, which is not on PyPI until the post-merge
+          # upload. Install the published package so this check stays green.
+          jevcheck-version: "0.2.1"
           contract: fixtures/support-triage.json
           command: eval
           candidate-model: jev-1.14
@@ -32,12 +35,14 @@ jobs:
     name: compare unchanged replay
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Compare candidate replay to recorded baseline
         uses: ./.github/actions/jevcheck
         with:
+          # Same published pin as the eval job. Drop this input after 0.2.2 is on PyPI.
+          jevcheck-version: "0.2.1"
           contract: fixtures/support-triage.json
           command: compare
           from: fixtures/replay-baseline.json

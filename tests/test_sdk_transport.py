@@ -1,4 +1,4 @@
-"""Regression tests against the real typesafe-sdk 0.7.0 with a mocked HTTP transport."""
+"""Regression tests against the locked typesafe-sdk 0.7.4 with a mocked HTTP transport."""
 
 from __future__ import annotations
 

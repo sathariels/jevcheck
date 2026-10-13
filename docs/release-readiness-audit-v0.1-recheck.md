@@ -2,6 +2,8 @@
 
 **Verdict: NOT READY, but substantially improved.** I would not tag exact commit `8b1852d05e952d66d7cee49cc6e49d14a10b1a5f` until the remaining effective-expectation and score-boundary defects are fixed, and the advertised alias opt-in is reconciled with response identity checking.
 
+**Later status:** each remaining P1/P2 finding below is **Resolved in be58041 (v0.2.0)**. The recheck text is unchanged. The status lines were added after that commit was checked against the current tree.
+
 Audited the latest fetched `origin/main`, advancing from `55986d9` to `8b1852d05e952d66d7cee49cc6e49d14a10b1a5f`. No source changes were made. Git status is clean. This is still fixture-versus-model evaluation, not execution of two versions; the updated README now says so explicitly.
 
 ## Verification completed
@@ -39,6 +41,8 @@ Passing replay exits 0; breaking replay exits 1. Minimum-confidence and Noul pol
 
 ### 1. P1 — a baseline-confidence-only expectation is still ineffective
 
+**Status: Resolved in be58041 (v0.2.0).** `require_actionable_resolved_expect()` rejects a baseline-confidence-only expect after defaults when neither `confidence_tolerance` nor `min_confidence` applies, and `evaluate_case` calls that check. The same choice at confidence 0.51 now raises `ValueError` instead of reporting compatible.
+
 A choice contract with `expect: {"q": {"baseline_confidence": 0.95}}`, no defaults, and an actual confidence of **0.51** exits **0**, prints **unchanged**, and declares **compatible**. The response is otherwise coherent: selected `b`, probabilities `a=0.49`, `b=0.51`.
 
 `_require_applicable_expect()` treats `baseline_confidence` as sufficient, but `_confidence_diff()` only evaluates a drop when `confidence_tolerance` is also present. Without a floor, choice constraint, or resolved tolerance, nothing is actually tested. The documentation explicitly calls this an effective constraint, making the silent pass misleading.
@@ -48,6 +52,8 @@ Evidence: `extra-results-recheck.json`, `baseline-only`; [src/jevcheck/contract.
 Suggested fix: validate effective constraints after resolving defaults; reject a baseline-only expectation when no applicable tolerance is available. Do not silently assume a new default tolerance or redefine semantics.
 
 ### 2. P2 — score tolerance still mishandles exact decimal boundaries
+
+**Status: Resolved in be58041 (v0.2.0).** `_eval_score` uses `exceeds_tolerance()` with `FLOAT_TOLERANCE_EPS` (`1e-9`). Expected 1.4 versus actual 1.6 at `score_tolerance` 0.2 is unchanged. Same-rounded-level behavior is unchanged.
 
 Expected score **1.4**, actual score **1.6**, `score_tolerance: 0.2` exits **1**, reporting an answer flip. The actual score response has valid legend and normalized probabilities (`1=0.4`, `2=0.6`). Decimal difference is exactly 0.2, which the documented inclusive tolerance should permit. Binary subtraction produces `0.20000000000000018`.
 
@@ -59,6 +65,8 @@ Suggested fix: apply the agreed inclusive numerical-boundary policy to score tol
 
 ### 3. P2 — allowed aliases cannot accept their legitimate resolved identity
 
+**Status: Resolved in be58041 (v0.2.0).** `require_response_identity()` accepts a nonempty concrete response model for an opted-in floating alias. `jev-preview` with `--allow-unpinned` and response `jev-1.13.0` is compatible. Concrete pins still require exact identity.
+
 With `--candidate-model jev-preview --allow-unpinned`, a matching response whose `model` is `jev-1.13.0` exits **2**, saying it does not match the requested candidate. The official API explicitly returns the versioned ID that answered an alias request. The CLI opt-in passes initial pin validation, but unconditional exact identity matching then rejects the expected API behavior.
 
 This was reproduced with replay input, exercising the same `evaluate()` identity check used by live calls; no live alias request was made. [Official model/alias behavior](https://docs.typesafe.ai/models.md).
@@ -68,6 +76,8 @@ Evidence: `extra-results-recheck.json`, `alias-opt-in`; [src/jevcheck/eval.py:12
 Suggested fix: explicitly decide how an opted-in alias resolves to a concrete version and how that version is reported/validated. Keep strict identity checking for concrete pins. Alternatively, stop advertising alias execution until that behavior is supported. This is a model-policy choice, not permission to relax every identity check.
 
 ### 4. P2 — malformed/missing score distributions still pass replay validation
+
+**Status: Resolved in be58041 (v0.2.0).** `ScoreAnswer` requires a nonempty `legend` and a nonempty normalized probability map. `adapt_answer()` does not invent either field, so omitted, null, and empty maps fail validation (exit 2) on the replay path.
 
 A score response with `score=2`, `confidence=0.9`, and omitted, null, or empty `probabilities` exits **0** in each case. The corresponding choice defects are fixed, but ScoreAnswer still defaults missing maps to empty, accepts empty maps, and the adapter drops explicit nulls. Missing legends likewise remain optional locally, even though the real SDK response schema requires those fields.
 
@@ -108,4 +118,4 @@ git -C work/repo status --short
 
 The evidence archive includes exact installed-CLI command arrays, outputs, synthetic inputs, scripts, and test/build results. The new artifact tests used SDK 0.7.0 and Pydantic 2.13.5. All original source edits were made upstream; this recheck modified no project source.
 
-**Tag decision: no for this exact commit.** Most earlier blockers are genuinely fixed. Address the four remaining findings above, rerun the new reproductions, and the project will be much closer to a defensible fixture-evaluator v0.1.0 release.
+**Tag decision: no for this exact commit.** Most earlier blockers are genuinely fixed. Address the four remaining findings above, rerun the new reproductions, and the project will be much closer to a defensible fixture-evaluator v0.1.0 release. Those four findings were later **Resolved in be58041 (v0.2.0)**; see the status line on each.
