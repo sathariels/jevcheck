@@ -1,5 +1,7 @@
 # jevcheck
 
+[![HOL Guard](https://img.shields.io/endpoint?url=https%3A%2F%2Fhol.org%2Fapi%2Fregistry%2Fbadges%2Fplugin%3Fslug%3Dsathariels%252Fjevcheck%26metric%3Dtrust)](https://hol.org/registry/plugins/sathariels%2Fjevcheck)
+
 [![HOL Guard Scanner](https://img.shields.io/badge/HOL%20Guard-passing-00a67e)](https://github.com/hashgraph-online/hol-guard)
 
 **pytest for Jev.** Pin what production is allowed to do, eval a candidate model, and fail the upgrade when answers flip or confidence drops.
