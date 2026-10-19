@@ -757,7 +757,10 @@ def test_cli_eval_report_file_keeps_text_stdout(tmp_path, capsys) -> None:
 
 
 def test_cli_eval_format_json_report_matches_stdout(tmp_path, capsys, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", "sk-test-jevcheck-should-not-leak")
+    # Same non-credential sentinel as tests/test_sdk_transport.py. An sk- prefix
+    # is a hardcoded-secret finding for the plugin scanner.
+    sentinel = "ts_fake_key_sentinel_not_real"
+    monkeypatch.setenv("TYPESAFE_API_KEY", sentinel)
     path = tmp_path / "report.json"
     code = main(
         [
@@ -779,8 +782,8 @@ def test_cli_eval_format_json_report_matches_stdout(tmp_path, capsys, monkeypatc
     assert written == captured.out
     payload = json.loads(written)
     assert payload["verdict"] == "compatible"
-    assert "sk-test-jevcheck-should-not-leak" not in captured.out
-    assert "sk-test-jevcheck-should-not-leak" not in written
+    assert sentinel not in captured.out
+    assert sentinel not in written
     assert "TYPESAFE_API_KEY" not in written
 
 
