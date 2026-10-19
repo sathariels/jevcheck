@@ -63,6 +63,14 @@ inputs:
       need it after the job.
     required: false
     default: ""
+  report:
+    description: >
+      Optional path for the JSON report (`--report`) on `eval` and `compare`.
+      The file is written whether or not stdout is text. It contains schema
+      `"1"`, the command, the verdict, resolved models, and per-field
+      outcomes. It does not contain API keys. Not valid for `record`.
+    required: false
+    default: ""
   allow-unpinned:
     description: >
       Pass `--allow-unpinned` so floating names such as `jev-latest` and
@@ -77,11 +85,11 @@ inputs:
   jevcheck-version:
     description: PyPI version pin installed as `jevcheck==<version>`.
     required: false
-    default: "0.2.2"
+    default: "0.3.0"
   working-directory:
     description: >
-      Directory to run the CLI from. Contract, replay, and `out` paths are
-      resolved relative to this directory.
+      Directory to run the CLI from. Contract, replay, `out`, and `report`
+      paths are resolved relative to this directory.
     required: false
     default: ""
 
@@ -113,6 +121,7 @@ runs:
         JEVCHECK_FROM: ${{ inputs.from }}
         JEVCHECK_ANSWERS: ${{ inputs.answers }}
         JEVCHECK_OUT: ${{ inputs.out }}
+        JEVCHECK_REPORT: ${{ inputs.report }}
         JEVCHECK_ALLOW_UNPINNED: ${{ inputs.allow-unpinned }}
         JEVCHECK_WORKING_DIRECTORY: ${{ inputs.working-directory }}
       run: |
@@ -131,7 +140,13 @@ runs:
         from_replay="${JEVCHECK_FROM}"
         answers="${JEVCHECK_ANSWERS}"
         out="${JEVCHECK_OUT}"
+        report="${JEVCHECK_REPORT}"
         allow="${JEVCHECK_ALLOW_UNPINNED}"
+
+        if [ -n "${report}" ] && [ "${command}" = "record" ]; then
+          echo "jevcheck action: report applies to eval and compare, not record" >&2
+          exit 2
+        fi
 
         if [ -n "${candidate}" ] && [ -n "${to}" ] && [ "${candidate}" != "${to}" ]; then
           echo "jevcheck action: candidate-model (${candidate}) and to (${to}) disagree" >&2
@@ -159,6 +174,9 @@ runs:
             if [ -n "${answers}" ]; then
               args+=(--answers "${answers}")
             fi
+            if [ -n "${report}" ]; then
+              args+=(--report "${report}")
+            fi
             ;;
           compare)
             if [ -z "${to}" ]; then
@@ -185,6 +203,9 @@ runs:
             fi
             if [ -n "${answers}" ]; then
               args+=(--answers "${answers}")
+            fi
+            if [ -n "${report}" ]; then
+              args+=(--report "${report}")
             fi
             ;;
           record)

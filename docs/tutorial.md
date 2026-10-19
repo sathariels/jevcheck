@@ -17,7 +17,7 @@ pip install -e ".[dev]"
 Or install the published package and copy the [examples pack](../examples/README.md) into your own repo:
 
 ```bash
-pip install "jevcheck==0.2.2"
+pip install "jevcheck==0.3.0"
 ```
 
 `jevcheck` and `python -m jevcheck` run the same CLI. Use the module form when the `jevcheck` script is not on your `PATH`.
@@ -88,6 +88,8 @@ breaking
 
 Exit codes: **0** compatible, **1** breaking, **2** usage or identity, **3** operational (live HTTP / invalid API body).
 
+`--format json` prints a schema `"1"` report and nothing else. `--report PATH` writes that file and leaves the text summary on stdout. The JSON has the same verdict and the same flip and regression diffs (`general→billing`, `0.94→0.71`). Schema: [contract.md](contract.md#json-report-schema-1).
+
 ## 4. Record, then compare (v0.2)
 
 `eval` checks the authored `expect` block. `record` and `compare` check a candidate against a baseline model's answers. Lock: [adr-009-two-model-compare.md](adr-009-two-model-compare.md).
@@ -152,16 +154,17 @@ Other repos can call the [composite action](../.github/actions/jevcheck/action.y
 Copy [`examples/jevcheck.yml`](../examples/jevcheck.yml) to `.github/workflows/jevcheck.yml`. It runs fixture-only `eval` and `compare` and does not set `TYPESAFE_API_KEY`. The breaking replay stays local so the workflow can remain a green check.
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.3.0
   with:
     contract: examples/support.json
     command: compare
     from: examples/replay-baseline.json
     to: jev-1.14
     answers: examples/replay-unchanged.json
+    report: jevcheck-report.json
 ```
 
-Pin `@v0.2.2`. `@v0.2.1` is the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action. This repo's in-tree proof is [`.github/workflows/jevcheck-example.yml`](../.github/workflows/jevcheck-example.yml), which points `uses:` at `./.github/actions/jevcheck` and the fuller `fixtures/` set. It installs the Action default, published `jevcheck==0.2.2`.
+Pin `@v0.3.0`. `@v0.2.1` is the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action. This repo's in-tree proof is [`.github/workflows/jevcheck-example.yml`](../.github/workflows/jevcheck-example.yml), which points `uses:` at `./.github/actions/jevcheck` and the fuller `fixtures/` set. That workflow sets `jevcheck-version: "0.2.2"` so it installs the package already on PyPI. The Action default is `0.3.0`.
 
 ## 7. Optional PR gate (jevtriage)
 

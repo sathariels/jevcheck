@@ -4,13 +4,36 @@ import json
 import subprocess
 import sys
 
+import pytest
+
 import jevcheck
 from jevcheck.cli import EXIT_USAGE, main
 from tests.helpers import FIXTURES
 
 
-def test_package_version_is_0_2_2() -> None:
-    assert jevcheck.__version__ == "0.2.2"
+def _visible_text_details(summary: str) -> list[str]:
+    """Details from text lines such as ``ticket-002 intent: general→billing  [flip]``."""
+    details = []
+    for line in summary.splitlines():
+        if not line.endswith("]") or "  [" not in line or ": " not in line:
+            continue
+        left, _label = line.rsplit("  [", 1)
+        _prefix, detail = left.split(": ", 1)
+        details.append(detail)
+    return details
+
+
+def _json_visible_details(payload: dict) -> list[str]:
+    return [
+        field["detail"]
+        for case in payload["cases"]
+        for field in case["fields"]
+        if field["outcome"] != "unchanged"
+    ]
+
+
+def test_package_version_is_0_3_0() -> None:
+    assert jevcheck.__version__ == "0.3.0"
 
 
 def test_cli_compatible_exit_zero() -> None:
@@ -612,3 +635,292 @@ def test_cli_bad_choice_probabilities_is_usage_error(tmp_path, capsys) -> None:
     captured = capsys.readouterr()
     assert code == EXIT_USAGE
     assert "probabilities" in captured.err
+
+
+def test_cli_eval_format_json_unchanged(capsys) -> None:
+    code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-unchanged.json"),
+            "--format",
+            "json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.err == ""
+    payload = json.loads(captured.out)
+    assert captured.out == json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
+    assert payload["schema"] == "1"
+    assert payload["command"] == "eval"
+    assert payload["verdict"] == "compatible"
+    assert payload["models"]["baseline"] == "jev-1.13"
+    assert payload["models"]["candidate"] == "jev-1.14"
+    assert payload["counts"]["cases"] == 3
+    assert payload["counts"]["unchanged"] == 3
+    assert payload["counts"]["answer_flips"] == 0
+    assert payload["counts"]["confidence_regressions"] == 0
+    assert _json_visible_details(payload) == []
+    assert "jevcheck eval:" not in captured.out
+
+
+def test_cli_eval_format_json_breaking_matches_text(capsys) -> None:
+    text_code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-breaking.json"),
+        ]
+    )
+    text = capsys.readouterr().out
+    assert text_code == 1
+    assert "general→billing" in text
+    assert "0.94→0.71" in text
+
+    code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-breaking.json"),
+            "--format",
+            "json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.err == ""
+    payload = json.loads(captured.out)
+    assert payload["schema"] == "1"
+    assert payload["command"] == "eval"
+    assert payload["verdict"] == "breaking"
+    assert payload["models"]["candidate"] == "jev-1.14"
+    assert _json_visible_details(payload) == _visible_text_details(text)
+    assert "general→billing" in _json_visible_details(payload)
+    assert "0.94→0.71" in _json_visible_details(payload)
+    flip = next(
+        field
+        for case in payload["cases"]
+        if case["id"] == "ticket-002"
+        for field in case["fields"]
+        if field["field"] == "intent"
+    )
+    assert flip["outcome"] == "answer_flip"
+    assert flip["expected"] == "general"
+    assert flip["actual"] == "billing"
+    assert flip["detail"] == "general→billing"
+    regression = next(
+        field
+        for case in payload["cases"]
+        for field in case["fields"]
+        if field["detail"] == "0.94→0.71"
+    )
+    assert regression["outcome"] == "confidence_regression"
+    assert regression["expected"] == "0.94"
+    assert regression["actual"] == "0.71"
+    assert "behavioral flips:" not in captured.out
+
+
+def test_cli_eval_report_file_keeps_text_stdout(tmp_path, capsys) -> None:
+    path = tmp_path / "report.json"
+    code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-breaking.json"),
+            "--report",
+            str(path),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "jevcheck eval:" in captured.out
+    assert captured.out.strip().endswith("breaking")
+    assert "general→billing" in captured.out
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["schema"] == "1"
+    assert payload["verdict"] == "breaking"
+    assert payload["command"] == "eval"
+    assert _json_visible_details(payload) == _visible_text_details(captured.out)
+
+
+def test_cli_eval_format_json_report_matches_stdout(tmp_path, capsys, monkeypatch) -> None:
+    # Same non-credential sentinel as tests/test_sdk_transport.py. An sk- prefix
+    # is a hardcoded-secret finding for the plugin scanner.
+    sentinel = "ts_fake_key_sentinel_not_real"
+    monkeypatch.setenv("TYPESAFE_API_KEY", sentinel)
+    path = tmp_path / "report.json"
+    code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-unchanged.json"),
+            "--format",
+            "json",
+            "--report",
+            str(path),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    written = path.read_text(encoding="utf-8")
+    assert written == captured.out
+    payload = json.loads(written)
+    assert payload["verdict"] == "compatible"
+    assert sentinel not in captured.out
+    assert sentinel not in written
+    assert "TYPESAFE_API_KEY" not in written
+
+
+def test_cli_format_json_usage_error_leaves_stdout_empty(capsys) -> None:
+    code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-latest",
+            "--answers",
+            str(FIXTURES / "replay-unchanged.json"),
+            "--format",
+            "json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == EXIT_USAGE
+    assert captured.out == ""
+    assert "unpinned" in captured.err
+
+
+def test_cli_rejects_unknown_format() -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "eval",
+                str(FIXTURES / "support-triage.json"),
+                "--candidate-model",
+                "jev-1.14",
+                "--answers",
+                str(FIXTURES / "replay-unchanged.json"),
+                "--format",
+                "yaml",
+            ]
+        )
+    assert exc.value.code == EXIT_USAGE
+
+
+def test_cli_report_missing_parent_is_usage_error(tmp_path, capsys) -> None:
+    missing = tmp_path / "no-such-dir" / "report.json"
+    code = main(
+        [
+            "eval",
+            str(FIXTURES / "support-triage.json"),
+            "--candidate-model",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-unchanged.json"),
+            "--format",
+            "json",
+            "--report",
+            str(missing),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == EXIT_USAGE
+    assert captured.out == ""
+    assert not missing.exists()
+
+
+def test_cli_compare_format_json_unchanged(capsys) -> None:
+    code = main(
+        [
+            "compare",
+            str(FIXTURES / "support-triage.json"),
+            "--from",
+            str(FIXTURES / "replay-baseline.json"),
+            "--to",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-unchanged.json"),
+            "--format",
+            "json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    payload = json.loads(captured.out)
+    assert payload["schema"] == "1"
+    assert payload["command"] == "compare"
+    assert payload["verdict"] == "compatible"
+    assert payload["models"]["baseline"] == "jev-1.13"
+    assert payload["models"]["candidate"] == "jev-1.14"
+    assert payload["models"]["requested_baseline"] == "jev-1.13"
+    assert payload["models"]["requested_candidate"] == "jev-1.14"
+    assert payload["counts"]["unchanged"] == payload["counts"]["cases"]
+    assert "jevcheck compare:" not in captured.out
+
+
+def test_cli_compare_format_json_breaking_matches_text(tmp_path, capsys) -> None:
+    text_code = main(
+        [
+            "compare",
+            str(FIXTURES / "support-triage.json"),
+            "--from",
+            str(FIXTURES / "replay-baseline.json"),
+            "--to",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-breaking.json"),
+        ]
+    )
+    text = capsys.readouterr().out
+    assert text_code == 1
+
+    path = tmp_path / "compare-report.json"
+    code = main(
+        [
+            "compare",
+            str(FIXTURES / "support-triage.json"),
+            "--from",
+            str(FIXTURES / "replay-baseline.json"),
+            "--to",
+            "jev-1.14",
+            "--answers",
+            str(FIXTURES / "replay-breaking.json"),
+            "--format",
+            "json",
+            "--report",
+            str(path),
+        ]
+    )
+    captured = capsys.readouterr()
+    assert code == 1
+    payload = json.loads(captured.out)
+    assert path.read_text(encoding="utf-8") == captured.out
+    assert payload["command"] == "compare"
+    assert payload["verdict"] == "breaking"
+    assert _json_visible_details(payload) == _visible_text_details(text)
+    assert "general→billing" in _json_visible_details(payload)
+    flip = next(
+        field
+        for case in payload["cases"]
+        if case["id"] == "ticket-002"
+        for field in case["fields"]
+        if field["outcome"] == "answer_flip"
+    )
+    assert flip["expected"] == "general"
+    assert flip["actual"] == "billing"

@@ -1,6 +1,8 @@
 # Exercises the reusable composite action against in-repo replay fixtures.
 # No TYPESAFE_API_KEY is required. A breaking-replay job is intentionally
 # omitted so this workflow can stay a required green check.
+# jevcheck-version stays on published 0.2.2 until 0.3.0 is uploaded.
+# The Action default is 0.3.0.
 name: jevcheck example
 
 on:
@@ -27,6 +29,7 @@ jobs:
           command: eval
           candidate-model: jev-1.14
           answers: fixtures/replay-unchanged.json
+          jevcheck-version: "0.2.2"
 
   compare-unchanged:
     name: compare unchanged replay
@@ -43,3 +46,4 @@ jobs:
           from: fixtures/replay-baseline.json
           to: jev-1.14
           answers: fixtures/replay-unchanged.json
+          jevcheck-version: "0.2.2"

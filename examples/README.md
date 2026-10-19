@@ -35,6 +35,16 @@ jevcheck eval examples/support.json \
 Exit 1. Summary ends with `breaking` and includes `general→billing` and `0.94→0.71`.
 
 ```bash
+jevcheck eval examples/support.json \
+  --candidate-model jev-1.14 \
+  --answers examples/replay-breaking.json \
+  --format json \
+  --report /tmp/jevcheck-report.json
+```
+
+Exit 1. Stdout is only the schema `"1"` JSON report. `verdict` is `breaking`. Field `detail` values include `general→billing` and `0.94→0.71`, with matching `expected` and `actual`. The file at `--report` is that same JSON.
+
+```bash
 jevcheck record examples/support.json \
   --answers examples/replay-baseline.json \
   --out /tmp/baseline-answers.json
@@ -66,6 +76,6 @@ Exit 1.
 
 Copy `jevcheck.yml` to `.github/workflows/jevcheck.yml`. Leave this directory at the repo root so the workflow paths (`examples/support.json`, `examples/replay-unchanged.json`, `examples/replay-baseline.json`) resolve. If you move the JSON files, change those inputs.
 
-The workflow calls `sathariels/jevcheck/.github/actions/jevcheck@v0.2.2`, installs `jevcheck==0.2.2` from PyPI, and runs `eval` plus `compare` on the unchanged replay. It does not set `TYPESAFE_API_KEY`. The breaking replay is omitted because exit 1 fails the job.
+The workflow calls `sathariels/jevcheck/.github/actions/jevcheck@v0.3.0`, installs `jevcheck==0.3.0` from PyPI, and runs `eval` plus `compare` on the unchanged replay. It does not set `TYPESAFE_API_KEY`. The breaking replay is omitted because exit 1 fails the job.
 
-Pin `@v0.2.2`. `@v0.2.1` is the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action.
+Pin `@v0.3.0`. `@v0.2.1` is the first tag that contains `.github/actions/jevcheck`. `v0.2.0` does not include the action.
