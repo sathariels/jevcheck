@@ -21,7 +21,7 @@ from jevcheck.pinning import (
     require_response_identity,
 )
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 __all__ = [
     "AUTH_ENV",

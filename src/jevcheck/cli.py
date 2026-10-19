@@ -22,7 +22,7 @@ from jevcheck.answers import JevResponse
 from jevcheck.client import AUTH_ENV, JevClient
 from jevcheck.compare import compare, record_answers
 from jevcheck.contract import Case, Contract, load_contract, load_replay, write_replay
-from jevcheck.eval import Fetch, evaluate
+from jevcheck.eval import EvalReport, Fetch, evaluate
 from jevcheck.pinning import (
     ModelIdentityError,
     UnpinnedModelError,
@@ -71,6 +71,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "accept a concrete resolved response model (not another alias)"
         ),
     )
+    _add_report_arguments(eval_cmd)
 
     record_cmd = sub.add_parser(
         "record",
@@ -147,6 +148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "accept a concrete resolved response model (not another alias)"
         ),
     )
+    _add_report_arguments(compare_cmd)
 
     args = parser.parse_args(list(argv) if argv is not None else None)
     handlers = {
@@ -209,7 +211,7 @@ def _run_eval(args: argparse.Namespace) -> int:
         candidate_model=candidate,
         allow_unpinned=allow,
     )
-    sys.stdout.write(report.summary())
+    _emit_report(report, args)
     return EXIT_BREAKING if report.breaking else EXIT_OK
 
 
@@ -297,8 +299,35 @@ def _run_compare(args: argparse.Namespace) -> int:
         candidate_model=candidate,
         allow_unpinned=allow,
     )
-    sys.stdout.write(report.summary())
+    _emit_report(report, args)
     return EXIT_BREAKING if report.breaking else EXIT_OK
+
+
+def _add_report_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="stdout format (default: text). json prints the report and nothing else",
+    )
+    parser.add_argument(
+        "--report",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="write the JSON report to PATH (independent of --format)",
+    )
+
+
+def _emit_report(report: EvalReport, args: argparse.Namespace) -> None:
+    """Write the JSON report file, then stdout as text or pure JSON."""
+    document = report.to_json()
+    if args.report is not None:
+        args.report.write_text(document, encoding="utf-8")
+    if args.format == "json":
+        sys.stdout.write(document)
+        return
+    sys.stdout.write(report.summary())
 
 
 def _answers_or_live_fetch(

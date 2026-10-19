@@ -2,6 +2,12 @@
 
 Tag, GitHub Release, and PyPI upload happen after the release pull request is merged. The release pull request does not push a tag, open a GitHub Release, or upload to PyPI.
 
+## 0.3.0 is prepared, not tagged
+
+This tree is version `0.3.0` (`pyproject.toml`, `jevcheck.__version__`, Action `jevcheck-version` default). It is not tagged and not on PyPI. `.github/workflows/jevcheck-example.yml` sets `jevcheck-version: "0.2.2"` so that job installs the published package. After the 0.3.0 upload, remove that pin so the workflow uses the Action default.
+
+The 0.2.2 steps below are the previous release.
+
 There is no publish workflow. `.github/workflows/` contains `ci.yml`, `jevcheck-example.yml`, `pr-triage.yml`, and `plugin-scan.yml` only. PyPI upload is a manual `twine upload` from the tag.
 
 `v0.2.1` is on PyPI and is the first tag that contains `.github/actions/jevcheck`. Documented `uses:` refs for this release pin `@v0.2.2`. The composite action's default install is `jevcheck==0.2.2`, so that install succeeds only after the upload below.

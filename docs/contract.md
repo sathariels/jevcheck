@@ -123,3 +123,68 @@ For mocked evals and tests, a JSON object keyed by case `id`:
 Answer objects use only verified System One fields.
 
 `jevcheck record` (v0.2) writes this same file. `jevcheck compare --from` reads it as the baseline snapshot. See [`adr-009-two-model-compare.md`](adr-009-two-model-compare.md). `eval` remains fixture-versus-candidate.
+
+## JSON report (schema 1)
+
+`jevcheck eval` and `jevcheck compare` accept `--format {text,json}`. The default is `text`, and that summary is unchanged. `--format json` writes only this document to stdout (indented JSON, trailing newline). `--report PATH` writes the same document to a file whether stdout is text or JSON. Exit codes stay **0** compatible, **1** breaking, **2** usage or identity, **3** operational. A usage or ops failure writes nothing to stdout and does not create the report file.
+
+`record` has no JSON report.
+
+`EvalReport.to_dict()` / `to_json()` build the document from `model_dump(mode="json")`. `compare` returns the same `EvalReport` with `command` `"compare"`. The document contains the contract name, resolved model ids, counts, and per-field labels. It does not contain API keys, `TYPESAFE_API_KEY`, request `state`, or raw System One bodies.
+
+This schema version is `"1"`. It is not the contract file `version` (`"0.1"`).
+
+```json
+{
+  "schema": "1",
+  "command": "eval",
+  "verdict": "breaking",
+  "name": "support-triage",
+  "models": {
+    "baseline": "jev-1.13",
+    "candidate": "jev-1.14",
+    "requested_baseline": null,
+    "requested_candidate": null
+  },
+  "counts": {
+    "cases": 3,
+    "unchanged": 1,
+    "confidence_regressions": 1,
+    "answer_flips": 1
+  },
+  "cases": [
+    {
+      "id": "ticket-002",
+      "outcome": "answer_flip",
+      "model": "jev-1.14",
+      "fields": [
+        {
+          "field": "intent",
+          "outcome": "answer_flip",
+          "expected": "general",
+          "actual": "billing",
+          "detail": "general→billing"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `schema` | Always `"1"` for this document |
+| `command` | `"eval"` or `"compare"` |
+| `verdict` | `"compatible"` or `"breaking"` (same word the text summary ends with) |
+| `name` | Contract name, or `null` |
+| `models.baseline` | Resolved baseline id reported in the text summary |
+| `models.candidate` | Resolved candidate id. `null` when `evaluate()` was called without a candidate (text prints `(replay)`) |
+| `models.requested_baseline` | Pin stored by `compare`. `null` on `eval` |
+| `models.requested_candidate` | Candidate pin stored by `compare`. `null` on `eval`. When this differs from `models.candidate`, the text summary prints `alias → resolved` |
+| `counts` | Case totals from the text summary (`cases`, `unchanged`, `confidence_regressions`, `answer_flips`) |
+| `cases[].id` | Case id |
+| `cases[].outcome` | Worst field outcome: `unchanged`, `confidence_regression`, or `answer_flip` |
+| `cases[].model` | That case's response `model` (the resolved id) |
+| `cases[].fields[]` | Every expected field. `outcome` is one of the three values above. `detail` is the text-summary arrow (`general→billing`, `0.94→0.71`) or `unchanged` |
+
+Flips and confidence regressions set `expected` and `actual` to the labels in `detail` (`general` / `billing`, `0.94` / `0.71`). An unchanged field may leave `expected` null and put the observed label in `actual`. The text summary omits unchanged fields; the JSON includes them.

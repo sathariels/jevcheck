@@ -1,9 +1,38 @@
 from __future__ import annotations
 
+import json
+
 from jevcheck.answers import JevResponse
 from jevcheck.contract import Contract, load_replay
-from jevcheck.eval import Outcome, evaluate
+from jevcheck.eval import REPORT_SCHEMA, Outcome, evaluate
 from tests.helpers import FIXTURES, choice, noul, response, score
+
+
+def test_to_dict_builds_schema_from_model_dump(contract: Contract) -> None:
+    replay = load_replay(FIXTURES / "replay-breaking.json")
+    report = evaluate(contract, lambda case: replay[case.id], candidate_model="jev-1.14")
+    dumped = report.model_dump(mode="json")
+    payload = report.to_dict()
+
+    assert payload["schema"] == REPORT_SCHEMA == "1"
+    assert payload["command"] == dumped["mode"] == "eval"
+    assert payload["verdict"] == "breaking"
+    assert payload["name"] == dumped["name"]
+    assert payload["models"] == {
+        "baseline": dumped["baseline_model"],
+        "candidate": dumped["candidate_model"],
+        "requested_baseline": dumped["requested_baseline_model"],
+        "requested_candidate": dumped["requested_candidate_model"],
+    }
+    assert payload["counts"]["cases"] == dumped["cases_checked"]
+    assert payload["counts"]["answer_flips"] == dumped["answer_flips"]
+    assert payload["counts"]["confidence_regressions"] == dumped["confidence_regressions"]
+    assert payload["cases"][0]["id"] == dumped["results"][0]["case_id"]
+    assert payload["cases"][0]["model"] == dumped["results"][0]["candidate_model"]
+    assert payload["cases"][0]["fields"][0]["expected"] == dumped["results"][0]["diffs"][0]["expected"]
+    assert payload["cases"][0]["fields"][0]["actual"] == dumped["results"][0]["diffs"][0]["actual"]
+    assert json.loads(report.to_json()) == payload
+    assert report.to_json().endswith("\n")
 
 
 def test_detects_choice_flip_and_confidence_drop(contract: Contract) -> None:

@@ -51,6 +51,14 @@ jobs:
             --to jev-1.14 \
             --answers fixtures/replay-unchanged.json
           "$RUNNER_TEMP/wheel/bin/python" -c "import jevcheck,inspect; print(jevcheck.__version__)"
+      - name: JSON report smoke
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/wheel/bin/jevcheck" eval fixtures/support-triage.json \
+            --candidate-model jev-1.14 \
+            --answers fixtures/replay-unchanged.json \
+            --format json > "$RUNNER_TEMP/eval-report.json"
+          "$RUNNER_TEMP/wheel/bin/python" -c 'import json,os; from pathlib import Path; p=Path(os.environ["RUNNER_TEMP"])/"eval-report.json"; report=json.loads(p.read_text(encoding="utf-8")); assert report["schema"]=="1" and report["command"]=="eval" and report["verdict"]=="compatible", report'
       - name: sdist includes tests/fixtures and pytest collects
         run: |
           python -m venv "$RUNNER_TEMP/sdist"

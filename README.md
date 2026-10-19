@@ -10,7 +10,7 @@ Probabilities and model versions move. A raw `0.94` is not a release decision. j
 
 **New here?** Walk through the [first-run tutorial](https://github.com/sathariels/jevcheck/blob/main/docs/tutorial.md) (about 10 minutes, offline replay). Copy the [examples pack](https://github.com/sathariels/jevcheck/blob/main/examples/README.md) into your repo.
 
-**v0.1** `eval` is fixture-versus-candidate. **v0.2** adds two-model execution: `record` a baseline model's answers, then `compare` a candidate against that snapshot (or fetch both models live). See [`docs/adr-009-two-model-compare.md`](https://github.com/sathariels/jevcheck/blob/main/docs/adr-009-two-model-compare.md).
+**v0.1** `eval` is fixture-versus-candidate. **v0.2** adds two-model execution: `record` a baseline model's answers, then `compare` a candidate against that snapshot (or fetch both models live). See [`docs/adr-009-two-model-compare.md`](https://github.com/sathariels/jevcheck/blob/main/docs/adr-009-two-model-compare.md). **v0.3** adds a JSON report for `eval` and `compare` (`--format json`, `--report PATH`). Schema `"1"` is in [`docs/contract.md`](https://github.com/sathariels/jevcheck/blob/main/docs/contract.md). The default text summary and the exit codes are unchanged.
 
 The repo’s `jev-1.13` / `jev-1.14` strings are **unverified example pin labels** used by fixtures. A documented TypeSafe version pin (2026-09-19 model list) is `jev-1.13.0`. Floating aliases `jev-latest` and `jev-preview` are rejected unless you pass `--allow-unpinned`. With that opt-in, a response whose `model` is the concrete resolved ID (for example `jev-1.13.0`) is accepted; the eval report prints that resolved model. Concrete pins still require exact identity.
 
@@ -19,7 +19,7 @@ pin contract  →  ship on the pinned model  →  jevcheck eval     →  compati
                                           →  record → compare  →  compatible or breaking   (v0.2)
 ```
 
-Reports: **unchanged** / **confidence regressions** / **answer flips**, with exact diffs (`billing→general`, `0.94→0.71`) and a nonzero exit on failure.
+Reports: **unchanged** / **confidence regressions** / **answer flips**, with exact diffs (`billing→general`, `0.94→0.71`) and a nonzero exit on failure. `--format json` prints that same verdict and those diffs as JSON. `--report PATH` writes the JSON file either way. The document has no API keys.
 
 ## Install
 
@@ -47,6 +47,16 @@ Replay recorded answers (CI / no key):
 jevcheck eval fixtures/support-triage.json \
   --candidate-model jev-1.14 \
   --answers fixtures/replay-breaking.json
+```
+
+Machine-readable report (stdout is only JSON; exit 1 on this replay):
+
+```bash
+jevcheck eval fixtures/support-triage.json \
+  --candidate-model jev-1.14 \
+  --answers fixtures/replay-breaking.json \
+  --format json \
+  --report report.json
 ```
 
 4. Compatible (exit 0) → change the pin. Breaking (exit 1) → read the diffs; do not upgrade.
@@ -92,7 +102,7 @@ jevcheck compare fixtures/support-triage.json \
   --to jev-1.14
 ```
 
-`--from` and `--from-model` are mutually exclusive. Identity rules are the v0.1 pins: concrete names must match `response.model` exactly; `jev-latest` / `jev-preview` still need `--allow-unpinned`. Exit codes stay 0 compatible / 1 breaking / 2 usage-or-identity / 3 ops.
+`--from` and `--from-model` are mutually exclusive. Identity rules are the v0.1 pins: concrete names must match `response.model` exactly; `jev-latest` / `jev-preview` still need `--allow-unpinned`. Exit codes stay 0 compatible / 1 breaking / 2 usage-or-identity / 3 ops. `compare` takes the same `--format` and `--report` flags as `eval`. `record` does not.
 
 Verified System One fields: [`docs/jev-api.md`](https://github.com/sathariels/jevcheck/blob/main/docs/jev-api.md).
 
@@ -114,6 +124,7 @@ report = evaluate(
     candidate_model="jev-1.14",
 )
 print(report.summary())
+# report.to_json() is the schema "1" document (--format json / --report).
 if report.breaking:
     raise SystemExit(1)
 ```
@@ -124,21 +135,20 @@ A `Gate` helper exists for auto / ask-human / reject thresholds. It is optional 
 
 Reuse jevcheck from other repos as a [composite action](https://github.com/sathariels/jevcheck/blob/main/.github/actions/jevcheck/action.yml). The action sets up Python, installs `jevcheck` from PyPI, and runs `eval` (default), `compare`, or `record`. A nonzero CLI exit fails the job (exit 1 is a breaking contract).
 
-Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. Pin `@v0.2.2`. `@v0.2.1` is the first tag that includes this action:
+Composite actions live in a subdirectory, so the `uses:` ref must point at a commit or tag that contains `.github/actions/jevcheck`. Pin `@v0.3.0`. `@v0.2.1` is the first tag that includes this action. `v0.2.0` does not contain it.
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.3.0
   with:
     contract: contracts/support.json
     command: compare
     from: fixtures/baseline.json
     to: jev-1.14
     answers: fixtures/candidate-replay.json
+    report: jevcheck-report.json
 ```
 
-`v0.2.0` does not contain `.github/actions/jevcheck`. Pin `@v0.2.2` (or a later tag). `@v0.2.1` is the first tag that includes the Action.
-
-This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/main/.github/workflows/jevcheck-example.yml) is the green CI proof: `eval` (and `compare`) on `fixtures/support-triage.json` + `fixtures/replay-unchanged.json`. No `TYPESAFE_API_KEY`. A breaking replay (`fixtures/replay-breaking.json`) exits 1; do not mark a job that uses it as a required check.
+This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/main/.github/workflows/jevcheck-example.yml) is the green CI proof: `eval` (and `compare`) on `fixtures/support-triage.json` + `fixtures/replay-unchanged.json`. No `TYPESAFE_API_KEY`. It sets `jevcheck-version: "0.2.2"` so the job installs the package already on PyPI. The Action default is `0.3.0`. A breaking replay (`fixtures/replay-breaking.json`) exits 1; do not mark a job that uses it as a required check.
 
 ### Inputs
 
@@ -153,9 +163,10 @@ This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/mai
 | `from` | — | `compare --from` (recorded baseline replay) |
 | `answers` | — | `--answers` (candidate replay for `eval`/`compare`; baseline replay for `record`) |
 | `out` | — | `record --out` (required when `command` is `record`) |
+| `report` | — | `--report` on `eval` and `compare` (JSON file; not valid for `record`) |
 | `allow-unpinned` | `false` | `--allow-unpinned` |
 | `python-version` | `3.12` | `actions/setup-python` |
-| `jevcheck-version` | `0.2.2` | `pip install jevcheck==…` |
+| `jevcheck-version` | `0.3.0` | `pip install jevcheck==…` |
 | `working-directory` | — | `cd` before the CLI; paths are relative to it |
 
 `candidate-model` and `to` are aliases for the same candidate id. If both are set they must match. `from` and `from-model` stay mutually exclusive, same as the CLI.
@@ -165,7 +176,7 @@ This repo’s [example workflow](https://github.com/sathariels/jevcheck/blob/mai
 Omit `answers` (and use `from-model` instead of `from`) only when the job has a TypeSafe key:
 
 ```yaml
-- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.2.2
+- uses: sathariels/jevcheck/.github/actions/jevcheck@v0.3.0
   env:
     TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
   with:

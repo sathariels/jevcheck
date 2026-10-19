@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from enum import Enum
 from typing import Any, Literal
@@ -61,6 +62,10 @@ class CaseResult(BaseModel):
     candidate_model: str | None = None
 
 
+# Report document version. Independent of the contract file version ("0.1").
+REPORT_SCHEMA = "1"
+
+
 class EvalReport(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -112,6 +117,62 @@ class EvalReport(BaseModel):
         lines.append("")
         lines.append("breaking" if self.breaking else "compatible")
         return "\n".join(lines) + "\n"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the schema ``"1"`` report built from ``model_dump``.
+
+        ``models.baseline`` and ``models.candidate`` are the resolved ids
+        the text summary reports. ``requested_*`` is the pin ``compare``
+        stored when an alias may resolve to a different id (null on eval).
+        Each case lists every field, including unchanged ones. Flips and
+        confidence regressions carry the same expected and actual labels
+        as the text diff. The dict has no credentials, request state, or
+        raw System One bodies.
+        """
+        dumped = self.model_dump(mode="json")
+        cases: list[dict[str, Any]] = []
+        for case in dumped["results"]:
+            fields = [
+                {
+                    "field": diff["field"],
+                    "outcome": diff["outcome"],
+                    "expected": diff["expected"],
+                    "actual": diff["actual"],
+                    "detail": diff["detail"],
+                }
+                for diff in case["diffs"]
+            ]
+            cases.append(
+                {
+                    "id": case["case_id"],
+                    "outcome": case["outcome"],
+                    "model": case["candidate_model"],
+                    "fields": fields,
+                }
+            )
+        return {
+            "schema": REPORT_SCHEMA,
+            "command": dumped["mode"],
+            "verdict": "breaking" if self.breaking else "compatible",
+            "name": dumped["name"],
+            "models": {
+                "baseline": dumped["baseline_model"],
+                "candidate": dumped["candidate_model"],
+                "requested_baseline": dumped["requested_baseline_model"],
+                "requested_candidate": dumped["requested_candidate_model"],
+            },
+            "counts": {
+                "cases": dumped["cases_checked"],
+                "unchanged": dumped["unchanged"],
+                "confidence_regressions": dumped["confidence_regressions"],
+                "answer_flips": dumped["answer_flips"],
+            },
+            "cases": cases,
+        }
+
+    def to_json(self) -> str:
+        """Serialize :meth:`to_dict` as JSON with a trailing newline."""
+        return json.dumps(self.to_dict(), indent=2, ensure_ascii=False) + "\n"
 
 
 Fetch = Callable[[Case], JevResponse]

@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-19
+
+### Added
+
+- `jevcheck eval` and `jevcheck compare` accept `--format {text,json}` (default `text`) and `--report PATH`. `--format json` writes only the report to stdout. `--report` writes that JSON file for either stdout format.
+- JSON schema `"1"`, documented in [`docs/contract.md`](https://github.com/sathariels/jevcheck/blob/main/docs/contract.md). The document has `schema`, `command`, `verdict` (`compatible` or `breaking`), resolved models, counts, and per-case field outcomes with `expected` and `actual` (flips and confidence regressions). `EvalReport.to_dict()` and `to_json()` build it from `model_dump`. `compare` uses the same report type.
+- GitHub Action input `report`, passed as `--report` for `eval` and `compare`.
+- CI smoke step runs `eval --format json` on the unchanged replay and checks that the stdout parses as schema `"1"` with verdict `compatible`.
+
+### Changed
+
+- Package version is `0.3.0` in `pyproject.toml`, `jevcheck.__version__`, and the Action input `jevcheck-version` (default `0.3.0`). Documented Action refs pin `@v0.3.0`. `@v0.2.1` remains the first tag that contains the Action.
+- `.github/workflows/jevcheck-example.yml` sets `jevcheck-version: "0.2.2"` so that job installs the package already on PyPI. This change does not tag or publish.
+- Default text summaries and exit codes are unchanged: 0 compatible, 1 breaking, 2 usage, 3 ops. The JSON report contains no API keys.
+
 ## [0.2.2] - 2026-10-13
 
 ### Added
@@ -75,6 +90,7 @@ Library source since [0.2.0] is the version string only. CLI commands, exit code
 - A baseline-confidence-only expect needs a floor or tolerance after defaults. An opted-in floating alias accepts a concrete resolved response model. Replay and adapter paths require nonempty normalized score probabilities and a legend.
 - The sdist ships tests and fixtures.
 
+[0.3.0]: https://github.com/sathariels/jevcheck/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/sathariels/jevcheck/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/sathariels/jevcheck/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/sathariels/jevcheck/compare/v0.1.0...v0.2.0

@@ -163,7 +163,12 @@ def compare(
     candidate_model: str,
     allow_unpinned: bool | None = None,
 ) -> EvalReport:
-    """Evaluate a candidate against recorded baseline answers using v0.1 evaluate()."""
+    """Evaluate a candidate against recorded baseline answers using v0.1 evaluate().
+
+    The report is an ``EvalReport`` with ``mode="compare"``. JSON is
+    ``EvalReport.to_dict`` / ``to_json`` (schema ``"1"``); there is no
+    separate compare report type.
+    """
     opt_in = contract.allow_unpinned if allow_unpinned is None else allow_unpinned
     requested_baseline = require_pinned(contract.baseline_model, allow_unpinned=opt_in)
     missing = [case.id for case in contract.cases if case.id not in baseline]
